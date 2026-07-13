@@ -143,6 +143,28 @@ const EXPECTED_SENSOR_BLOCK_TEXT: Record<typeof EXPECTED_SENSOR_TOOLBOX_TYPES[nu
   sensor_color_detected: "Color sensor port 1 detected red",
 };
 
+const EXPECTED_LOOP_TOOLBOX_TYPES = [
+  "loop_repeat_forever",
+  "loop_repeat_times",
+  "loop_while_condition",
+  "loop_repeat_until",
+  "loop_break",
+  "loop_return_value",
+  "loop_wait_seconds",
+  "loop_wait_until",
+] as const;
+
+const EXPECTED_LOOP_BLOCK_TEXT: Record<typeof EXPECTED_LOOP_TOOLBOX_TYPES[number], string> = {
+  loop_repeat_forever: "repeat forever",
+  loop_repeat_times: "repeat 10 times",
+  loop_while_condition: "if repeat",
+  loop_repeat_until: "repeat until",
+  loop_break: "break",
+  loop_return_value: "Return",
+  loop_wait_seconds: "wait 2 secs.",
+  loop_wait_until: "wait until",
+};
+
 function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem[] = []): ToolboxItem[] {
   for (const item of items) {
     if (item.kind === "block") blocks.push(item);
@@ -444,6 +466,52 @@ describe("projectStore C-013 save/load compatibility", () => {
     const colorDetected = workspace.newBlock("sensor_color_detected");
     expect(colorDetected.outputConnection?.getCheck()).toEqual(["Boolean"]);
     expect(dropdownValues(colorDetected.getField("color"))).toEqual(["red", "green", "blue", "yellow", "white", "black"]);
+  });
+
+  it("matches WhalesBot Loop toolbox order and visible block text", () => {
+    const workspace = new Blockly.Workspace();
+    const loopCategory = findToolboxCategory((toolbox as { contents: ToolboxItem[] }).contents, "Loop");
+    const loopTypes = (loopCategory.contents ?? [])
+      .filter((item) => item.kind === "block")
+      .map((item) => item.type);
+    const registryLoopTypes = WHALESBOT_BLOCK_REGISTRY
+      .filter((entry) => entry.category === "Loop")
+      .map((entry) => entry.type);
+
+    expect(loopTypes).toEqual([...EXPECTED_LOOP_TOOLBOX_TYPES]);
+    expect(loopTypes).toEqual(registryLoopTypes);
+
+    for (const type of EXPECTED_LOOP_TOOLBOX_TYPES) {
+      const block = workspace.newBlock(type);
+      expect(visibleBlockText(block), type).toBe(EXPECTED_LOOP_BLOCK_TEXT[type]);
+    }
+  });
+
+  it("matches WhalesBot Loop statement and input shapes", () => {
+    const workspace = new Blockly.Workspace();
+
+    for (const type of ["loop_repeat_forever", "loop_repeat_times", "loop_while_condition", "loop_repeat_until"]) {
+      const block = workspace.newBlock(type);
+      expect(block.previousConnection, type).not.toBeNull();
+      expect(block.nextConnection, type).not.toBeNull();
+      expect(block.getInput("do")?.connection, type).not.toBeNull();
+    }
+
+    const repeatTimes = workspace.newBlock("loop_repeat_times");
+    expect(repeatTimes.getFieldValue("times")).toBe(10);
+
+    const whileLoop = workspace.newBlock("loop_while_condition");
+    expect(whileLoop.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);
+
+    const returnBlock = workspace.newBlock("loop_return_value");
+    expect(returnBlock.getInput("value")?.connection).not.toBeNull();
+    expect(returnBlock.outputConnection).toBeNull();
+
+    const waitSeconds = workspace.newBlock("loop_wait_seconds");
+    expect(waitSeconds.getFieldValue("seconds")).toBe(2);
+
+    const waitUntil = workspace.newBlock("loop_wait_until");
+    expect(waitUntil.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);
   });
 
   it("keeps toolbox input and field names aligned with block definitions", () => {

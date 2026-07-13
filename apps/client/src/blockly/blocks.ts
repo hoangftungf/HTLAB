@@ -702,6 +702,124 @@ Blockly.Blocks["remote_control_button"] = {
   },
 };
 
+Blockly.Blocks["loop_repeat_forever"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "loop_repeat_forever",
+      message0: "repeat forever",
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "do" }],
+      colour: BLOCK_COLOURS.loop,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Repeat until the interpreter loop guard stops the program",
+    });
+  },
+};
+
+Blockly.Blocks["loop_repeat_times"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "loop_repeat_times",
+      message0: "repeat %1 times",
+      args0: [{ type: "field_number", name: "times", value: 10, min: 0 }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "do" }],
+      colour: BLOCK_COLOURS.loop,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Repeat blocks a fixed number of times",
+    });
+  },
+};
+
+Blockly.Blocks["loop_while_condition"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "loop_while_condition",
+      message0: "if %1 repeat",
+      args0: [{ type: "input_value", name: "condition", check: "Boolean" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "do" }],
+      colour: BLOCK_COLOURS.loop,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Repeat blocks while a condition remains true",
+    });
+  },
+};
+
+Blockly.Blocks["loop_repeat_until"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "loop_repeat_until",
+      message0: "repeat until %1",
+      args0: [{ type: "input_value", name: "condition", check: "Boolean" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "do" }],
+      colour: BLOCK_COLOURS.loop,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Repeat blocks until a condition becomes true",
+    });
+  },
+};
+
+Blockly.Blocks["loop_break"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "loop_break",
+      message0: "break",
+      colour: BLOCK_COLOURS.loop,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Exit the nearest running loop",
+    });
+  },
+};
+
+Blockly.Blocks["loop_return_value"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "loop_return_value",
+      message0: "Return %1",
+      args0: [{ type: "input_value", name: "value" }],
+      colour: BLOCK_COLOURS.loop,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Return a value from a custom block",
+    });
+  },
+};
+
+Blockly.Blocks["loop_wait_seconds"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "loop_wait_seconds",
+      message0: "wait %1 secs.",
+      args0: [{ type: "field_number", name: "seconds", value: 2, min: 0 }],
+      colour: BLOCK_COLOURS.loop,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Wait for a fixed duration",
+    });
+  },
+};
+
+Blockly.Blocks["loop_wait_until"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "loop_wait_until",
+      message0: "wait until %1",
+      args0: [{ type: "input_value", name: "condition", check: "Boolean" }],
+      colour: BLOCK_COLOURS.loop,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Wait until a condition becomes true",
+    });
+  },
+};
+
 Blockly.Blocks["control_if_v2"] = {
   init(this: Blockly.Block) {
     this.jsonInit({

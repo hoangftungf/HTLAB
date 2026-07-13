@@ -33,7 +33,7 @@ but are hidden from the line-following toolbox.
 | Light Speaker | Hidden from the line-following toolbox | Sound, LED, display, and electromagnet blocks remain loadable for compatibility and emit telemetry events. `reading 1` is an intentional stub diagnostic. |
 | Sensor | Present | Integrated grayscale, timer, and motor encoder paths are implemented where simulator data exists. Other hardware sensors are preserved as value/boolean expressions or stub diagnostics. |
 | Event | Present | `When program execute` is treated as the main entry marker. Touch-switch async events are preserved and emit a stub diagnostic. |
-| Loop | Present | Repeat, wait, break, return, repeat-until, and wait-until lower to IR v2. While-loop compatibility remains a diagnostic stub. |
+| Loop | Present with the 8 WhalesBot Loop blocks; legacy `control_*` blocks remain loadable but hidden | Repeat, wait, break, return, repeat-until, and wait-until lower to IR v2. While-loop compatibility remains a diagnostic stub. |
 | Logic | Present | If/else and boolean expression blocks lower to IR v2. Unsupported expression-as-statement usage emits a value-block diagnostic. |
 | Math | Present | Arithmetic, modulo, random, round, and unary/trig expressions lower to IR v2. Domain errors are runtime diagnostics. |
 | Variable | Present | Blockly variable dialog, set/change/get, and compatibility create block are present. The create dialog block itself is a no-op diagnostic when dragged into the workspace. |

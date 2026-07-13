@@ -109,26 +109,6 @@ export const toolbox: any = {
         block("loop_wait_until", {
           inputs: { condition: booleanShadow(false) },
         }),
-        block("control_repeat_times_v2", {
-          inputs: { TIMES: numberShadow(3) },
-        }),
-        block("control_repeat_forever"),
-        block("control_repeat_until", {
-          inputs: { COND: booleanShadow(false) },
-        }),
-        block("wait_seconds_v2", {
-          inputs: { SECONDS: numberShadow(1) },
-        }),
-        block("control_wait_until", {
-          inputs: {
-            COND: booleanShadow(false),
-            TIMEOUT: numberShadow(600),
-          },
-        }),
-        block("control_break"),
-        block("control_return", {
-          inputs: { VALUE: numberShadow(0) },
-        }),
       ],
     },
     {
