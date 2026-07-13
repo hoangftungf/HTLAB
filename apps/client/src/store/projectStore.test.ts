@@ -14,7 +14,7 @@ import {
   WHALESBOT_NUMBER_FIELD_CLASS,
 } from "../blockly/fieldShapeClasses.js";
 import { WHALESBOT_BLOCK_REGISTRY } from "../blockly/blockRegistry.js";
-import { toolbox } from "../blockly/toolbox.js";
+import { toolbox, variableToolboxFlyout, VARIABLE_CATEGORY_CALLBACK_KEY, VARIABLE_CATEGORY_COLOUR } from "../blockly/toolbox.js";
 import { workspaceToIR } from "../blockly/generator.js";
 import { loadProject, saveProject } from "./projectStore.js";
 import { SAMPLE_PROGRAMS } from "./samplePrograms.js";
@@ -57,7 +57,11 @@ type ToolboxItem = {
   kind: string;
   name?: string;
   colour?: string;
+  custom?: string;
   type?: string;
+  text?: string;
+  callbackKey?: string;
+  callbackkey?: string;
   inputs?: Record<string, unknown>;
   fields?: Record<string, unknown>;
   contents?: ToolboxItem[];
@@ -219,6 +223,18 @@ const EXPECTED_MATH_BLOCK_TEXT: Record<typeof EXPECTED_MATH_TOOLBOX_TYPES[number
   math_unary_function: "abs",
 };
 
+const EXPECTED_VARIABLE_TOOLBOX_TYPES = [
+  "value_variable",
+  "set_var_v2",
+  "change_var_v2",
+] as const;
+
+const EXPECTED_VARIABLE_BLOCK_TEXT: Record<typeof EXPECTED_VARIABLE_TOOLBOX_TYPES[number], string> = {
+  value_variable: "number",
+  set_var_v2: "set number to",
+  change_var_v2: "variables number by",
+};
+
 function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem[] = []): ToolboxItem[] {
   for (const item of items) {
     if (item.kind === "block") blocks.push(item);
@@ -229,7 +245,7 @@ function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem
 
 function findToolboxCategory(items: readonly ToolboxItem[], name: string): ToolboxItem {
   const category = items.find((item) => item.kind === "category" && item.name === name);
-  if (!category?.contents) {
+  if (!category) {
     throw new Error(`Toolbox category not found: ${name}`);
   }
   return category;
@@ -791,6 +807,69 @@ describe("projectStore C-013 save/load compatibility", () => {
     ]);
     expect(unary.getInput("value")?.connection?.getCheck()).toEqual(["Number"]);
     expect(unary.getField("angleUnit")).toBeNull();
+  });
+
+  it("matches WhalesBot Variable dynamic toolbox behavior", () => {
+    const variableCategory = findToolboxCategory((toolbox as { contents: ToolboxItem[] }).contents, "Variable");
+
+    expect(variableCategory.colour).toBe(VARIABLE_CATEGORY_COLOUR);
+    expect(variableCategory.custom).toBe(VARIABLE_CATEGORY_CALLBACK_KEY);
+    expect(variableCategory.contents).toBeUndefined();
+
+    const emptyWorkspace = new Blockly.Workspace();
+    const initialFlyout = variableToolboxFlyout(emptyWorkspace) as ToolboxItem[];
+    expect(initialFlyout).toHaveLength(1);
+    expect(initialFlyout[0]).toMatchObject({
+      kind: "button",
+      text: "Create a variable",
+      callbackKey: "CREATE_VARIABLE",
+      callbackkey: "CREATE_VARIABLE",
+    });
+
+    const workspace = new Blockly.Workspace();
+    workspace.createVariable("number", "Number", "var-number");
+    const flyout = variableToolboxFlyout(workspace) as ToolboxItem[];
+    const blocks = flyout.filter((item) => item.kind === "block");
+
+    expect(flyout[0].text).toBe("Create a variable");
+    expect(blocks.map((item) => item.type)).toEqual([...EXPECTED_VARIABLE_TOOLBOX_TYPES]);
+    for (const item of blocks) {
+      expect(item.fields?.VAR, item.type).toBe("var-number");
+    }
+    expect(shadowNumber(blocks.find((item) => item.type === "set_var_v2")!, "VALUE")).toBe(0);
+    expect(shadowNumber(blocks.find((item) => item.type === "change_var_v2")!, "DELTA")).toBe(1);
+  });
+
+  it("matches WhalesBot Variable block text and input shapes", () => {
+    const workspace = new Blockly.Workspace();
+    workspace.createVariable("number", "Number", "var-number");
+
+    for (const type of EXPECTED_VARIABLE_TOOLBOX_TYPES) {
+      const block = workspace.newBlock(type);
+      block.setFieldValue("var-number", "VAR");
+      expect(visibleBlockText(block), type).toBe(EXPECTED_VARIABLE_BLOCK_TEXT[type]);
+      expect(block.getColour().toLowerCase(), type).toBe(VARIABLE_CATEGORY_COLOUR.toLowerCase());
+    }
+
+    const reporter = workspace.newBlock("value_variable");
+    reporter.setFieldValue("var-number", "VAR");
+    expect(reporter.outputConnection?.getCheck()).toEqual(["Number"]);
+    expect(reporter.previousConnection).toBeNull();
+    expect(reporter.nextConnection).toBeNull();
+
+    const set = workspace.newBlock("set_var_v2");
+    set.setFieldValue("var-number", "VAR");
+    expect(set.outputConnection).toBeNull();
+    expect(set.previousConnection).not.toBeNull();
+    expect(set.nextConnection).not.toBeNull();
+    expect(set.getInput("VALUE")?.connection?.getCheck()).toEqual(["Number"]);
+
+    const change = workspace.newBlock("change_var_v2");
+    change.setFieldValue("var-number", "VAR");
+    expect(change.outputConnection).toBeNull();
+    expect(change.previousConnection).not.toBeNull();
+    expect(change.nextConnection).not.toBeNull();
+    expect(change.getInput("DELTA")?.connection?.getCheck()).toEqual(["Number"]);
   });
 
   it("keeps toolbox input and field names aligned with block definitions", () => {

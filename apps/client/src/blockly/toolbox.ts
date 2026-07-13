@@ -8,9 +8,28 @@
 type ToolboxBlock = {
   kind: "block";
   type: string;
-  inputs?: Record<string, unknown>;
+  inputs?: Record<string, any>;
   fields?: Record<string, unknown>;
 };
+
+type ToolboxButton = {
+  kind: "button";
+  text: string;
+  callbackKey: string;
+  callbackkey: string;
+};
+
+type ToolboxVariable = {
+  getId(): string;
+  name: string;
+};
+
+type VariableWorkspace = {
+  getAllVariables?: () => ToolboxVariable[];
+};
+
+export const VARIABLE_CATEGORY_CALLBACK_KEY = "HTLAB_VARIABLE";
+export const VARIABLE_CATEGORY_COLOUR = "#EBCE42";
 
 const numberShadow = (value: number) => ({
   shadow: { type: "value_number", fields: { NUM: value } },
@@ -28,6 +47,39 @@ const block = (
   type: string,
   options: Pick<ToolboxBlock, "inputs" | "fields"> = {},
 ): ToolboxBlock => ({ kind: "block", type, ...options });
+
+const createVariableButton = (): ToolboxButton => ({
+  kind: "button",
+  text: "Create a variable",
+  callbackKey: "CREATE_VARIABLE",
+  callbackkey: "CREATE_VARIABLE",
+});
+
+const variableField = (variable: ToolboxVariable) => ({
+  fields: { VAR: variable.getId() },
+});
+
+export function variableToolboxFlyout(workspace: VariableWorkspace): Array<ToolboxButton | ToolboxBlock> {
+  const variables = workspace.getAllVariables?.() ?? [];
+  const flyoutItems: Array<ToolboxButton | ToolboxBlock> = [createVariableButton()];
+
+  if (variables.length === 0) return flyoutItems;
+
+  const [firstVariable] = variables;
+  flyoutItems.push(
+    block("value_variable", variableField(firstVariable)),
+    block("set_var_v2", {
+      ...variableField(firstVariable),
+      inputs: { VALUE: numberShadow(0) },
+    }),
+    block("change_var_v2", {
+      ...variableField(firstVariable),
+      inputs: { DELTA: numberShadow(1) },
+    }),
+  );
+
+  return flyoutItems;
+}
 
 export const toolbox: any = {
   kind: "categoryToolbox",
@@ -157,19 +209,8 @@ export const toolbox: any = {
     {
       kind: "category",
       name: "Variable",
-      colour: "#d6b51d",
-      contents: [
-        { kind: "button", text: "Create variable", callbackKey: "CREATE_VARIABLE" },
-        block("variable_create"),
-        block("set_var", numberInputs({ VALUE: 0 })),
-        block("set_var_v2", {
-          inputs: { VALUE: numberShadow(0) },
-        }),
-        block("change_var_v2", {
-          inputs: { DELTA: numberShadow(1) },
-        }),
-        block("value_variable"),
-      ],
+      colour: VARIABLE_CATEGORY_COLOUR,
+      custom: VARIABLE_CATEGORY_CALLBACK_KEY,
     },
     {
       kind: "category",

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import * as Blockly from "blockly";
-import { toolbox } from "./toolbox.js";
+import { toolbox, variableToolboxFlyout, VARIABLE_CATEGORY_CALLBACK_KEY } from "./toolbox.js";
 import { workspaceToIR } from "./generator.js";
 import { applyWhalesBotFieldShapeClassesForWorkspace } from "./fieldShapeClasses.js";
 import type { IRProgram } from "@htlab/simulation-core";
@@ -11,6 +11,12 @@ interface BlocklyEditorProps {
   onIRGenerated?: (program: IRProgram) => void;
   initialXml?: string;
 }
+
+type VariableDialogState = {
+  workspace: Blockly.WorkspaceSvg;
+  name: string;
+  error?: string;
+} | null;
 
 export { workspaceToIR };
 export type { IRProgram };
@@ -57,6 +63,35 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
     readStoredBoolean(TOOLBOX_EXPANDED_STORAGE_KEY, true),
   );
   const [selectedSampleId, setSelectedSampleId] = useState(DEFAULT_SAMPLE_PROGRAM_ID);
+  const [variableDialog, setVariableDialog] = useState<VariableDialogState>(null);
+
+  const openVariableDialog = useCallback((workspace: Blockly.WorkspaceSvg) => {
+    setVariableDialog({ workspace, name: "" });
+  }, []);
+
+  const closeVariableDialog = useCallback(() => {
+    setVariableDialog(null);
+  }, []);
+
+  const submitVariableDialog = useCallback((event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (!variableDialog) return;
+
+    const name = variableDialog.name.trim();
+    if (!name) {
+      setVariableDialog({ ...variableDialog, error: "Variable name is required." });
+      return;
+    }
+
+    if (Blockly.Variables.nameUsedWithAnyType(name, variableDialog.workspace)) {
+      setVariableDialog({ ...variableDialog, error: `Variable "${name}" already exists.` });
+      return;
+    }
+
+    variableDialog.workspace.createVariable(name, "Number");
+    variableDialog.workspace.refreshToolboxSelection();
+    setVariableDialog(null);
+  }, [variableDialog]);
 
   const applyToolboxVisibility = useCallback((expanded: boolean) => {
     const workspace = workspaceRef.current;
@@ -95,9 +130,10 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
     });
 
     workspaceRef.current = workspace;
+    workspace.registerToolboxCategoryCallback(VARIABLE_CATEGORY_CALLBACK_KEY, variableToolboxFlyout);
     workspace.registerButtonCallback("CREATE_VARIABLE", (button) => {
       const targetWorkspace = (button as any).getTargetWorkspace?.() ?? workspace;
-      Blockly.Variables.createVariableButtonHandler(targetWorkspace);
+      openVariableDialog(targetWorkspace);
     });
     workspace.registerButtonCallback("CREATE_MY_BLOCK", (button) => {
       const targetWorkspace = (button as any).getTargetWorkspace?.() ?? workspace;
@@ -146,7 +182,7 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
       workspace.dispose();
       workspaceRef.current = null;
     };
-  }, []);
+  }, [openVariableDialog]);
 
   useEffect(() => {
     window.localStorage.setItem(TOOLBOX_EXPANDED_STORAGE_KEY, String(toolboxExpanded));
@@ -293,6 +329,65 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
         </div>
       </div>
       <div ref={containerRef} className="flex-1" />
+      {variableDialog ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="variable-dialog-title"
+        >
+          <form
+            onSubmit={submitVariableDialog}
+            className="w-[376px] rounded-md border border-gray-300 bg-white shadow-xl"
+          >
+            <div className="flex items-center justify-between rounded-t-md bg-[#e4f5ed] px-3 py-2">
+              <h2 id="variable-dialog-title" className="text-sm font-medium text-gray-900">
+                Create a variable
+              </h2>
+              <button
+                type="button"
+                onClick={closeVariableDialog}
+                className="rounded px-2 text-lg leading-none text-gray-800 hover:bg-black/10"
+                aria-label="Close variable dialog"
+              >
+                x
+              </button>
+            </div>
+            <div className="px-4 py-7">
+              <label className="flex items-center gap-3 text-sm text-gray-900">
+                <span className="shrink-0">Variable name:</span>
+                <input
+                  autoFocus
+                  value={variableDialog.name}
+                  onChange={(event) => setVariableDialog({ ...variableDialog, name: event.target.value, error: undefined })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") closeVariableDialog();
+                  }}
+                  className="min-w-0 flex-1 rounded border border-[#ff7a2f] px-2 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-[#ffb58c]"
+                />
+              </label>
+              {variableDialog.error ? (
+                <p className="mt-2 text-xs text-red-600">{variableDialog.error}</p>
+              ) : null}
+            </div>
+            <div className="flex justify-center gap-3 px-4 pb-7">
+              <button
+                type="submit"
+                className="min-w-28 rounded bg-[#ff865c] px-6 py-2 text-sm font-medium text-white hover:bg-[#ff7444]"
+              >
+                OK
+              </button>
+              <button
+                type="button"
+                onClick={closeVariableDialog}
+                className="min-w-28 rounded border border-[#ff865c] px-6 py-2 text-sm font-medium text-[#ff865c] hover:bg-[#fff1ea]"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }

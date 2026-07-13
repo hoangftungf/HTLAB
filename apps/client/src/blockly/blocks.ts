@@ -27,7 +27,7 @@ const BLOCK_COLOURS = {
   loop: "#ffad33",
   logic: "#24bdf2",
   values: "#5AE05A",
-  variables: "#d6b51d",
+  variables: "#EBCE42",
   ai: "#6574ff",
   patrolLine: "#ff7a2f",
   myBlocks: "#2f6dff",
@@ -360,12 +360,13 @@ Blockly.Blocks["value_variable"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "value_variable",
-      message0: "var %1",
+      message0: "%1",
       args0: [
         {
           type: "field_variable",
           name: "VAR",
-          variable: "v0",
+          variable: "number",
+          defaultType: "Number",
         },
       ],
       colour: BLOCK_COLOURS.variables,
@@ -379,15 +380,17 @@ Blockly.Blocks["set_var_v2"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "set_var_v2",
-      message0: "Set var %1 = %2",
+      message0: "set %1 to %2",
       args0: [
         {
           type: "field_variable",
           name: "VAR",
-          variable: "v0",
+          variable: "number",
+          defaultType: "Number",
         },
         { type: "input_value", name: "VALUE", check: "Number" },
       ],
+      inputsInline: true,
       colour: BLOCK_COLOURS.variables,
       previousStatement: null,
       nextStatement: null,
@@ -400,15 +403,17 @@ Blockly.Blocks["change_var_v2"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "change_var_v2",
-      message0: "Change var %1 by %2",
+      message0: "variables %1 by %2",
       args0: [
         {
           type: "field_variable",
           name: "VAR",
-          variable: "v0",
+          variable: "number",
+          defaultType: "Number",
         },
         { type: "input_value", name: "DELTA", check: "Number" },
       ],
+      inputsInline: true,
       colour: BLOCK_COLOURS.variables,
       previousStatement: null,
       nextStatement: null,
