@@ -12,6 +12,7 @@ import {
   type Interpreter,
   type IRProgram,
 } from "@htlab/simulation-core";
+import { getSampleProgram } from "./samplePrograms.js";
 
 // ---- Hình dạng trạng thái ----
 
@@ -339,18 +340,6 @@ export const useSimStore = create<SimStore>((set, get) => ({
 }));
 
 // ---- Chương trình mẫu ----
-
-function getSampleProgram(): string | null {
-  return `\
-<xml xmlns="https://developers.google.com/blockly/xml">
-  <block type="initialize" x="20" y="20"></block>
-  <block type="calibrate_grayscale" x="20" y="80"></block>
-  <block type="patrol_line" x="20" y="140">
-    <field name="DIRECTION">forward</field>
-    <field name="SPEED">0.3</field>
-  </block>
-</xml>`;
-}
 
 // ---- Thiết lập phím tắt ----
 

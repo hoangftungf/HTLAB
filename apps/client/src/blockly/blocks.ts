@@ -1369,7 +1369,7 @@ Blockly.Blocks["c_code_function"] = {
       message1: "{ %1 }",
       args1: [
         {
-          type: "field_multilinetext",
+          type: "field_input",
           name: "body",
           text: "return _number1 + 1;",
         },
@@ -1416,7 +1416,7 @@ function fallbackFieldArg(field: BlockFieldSchema): Record<string, unknown> {
         options: (field.values ?? []).map((value) => [value, value]),
       };
     case "color":
-      return { type: "field_colour", name: field.name, colour: String(field.defaultValue ?? "#ffffff") };
+      return { type: "field_input", name: field.name, text: String(field.defaultValue ?? "#ffffff") };
     case "boolean":
       return { type: "field_checkbox", name: field.name, checked: Boolean(field.defaultValue) };
     case "value-input":
@@ -1426,7 +1426,7 @@ function fallbackFieldArg(field: BlockFieldSchema): Record<string, unknown> {
     case "statement-input":
       return { type: "input_statement", name: field.name };
     case "textarea":
-      return { type: "field_multilinetext", name: field.name, text: String(field.defaultValue ?? "") };
+      return { type: "field_input", name: field.name, text: String(field.defaultValue ?? "") };
     case "matrix":
       return { type: "field_input", name: field.name, text: "00000/00000/00000/00000/00000" };
   }

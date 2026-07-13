@@ -3,6 +3,7 @@ import * as Blockly from "blockly";
 import { toolbox } from "./toolbox.js";
 import { workspaceToIR } from "./generator.js";
 import type { IRProgram } from "@htlab/simulation-core";
+import { DEFAULT_SAMPLE_PROGRAM_ID, SAMPLE_PROGRAMS } from "../store/samplePrograms.js";
 import "./blocks.js"; // Đăng ký block tùy chỉnh
 
 interface BlocklyEditorProps {
@@ -54,6 +55,7 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
   const [toolboxExpanded, setToolboxExpanded] = useState(() =>
     readStoredBoolean(TOOLBOX_EXPANDED_STORAGE_KEY, true),
   );
+  const [selectedSampleId, setSelectedSampleId] = useState(DEFAULT_SAMPLE_PROGRAM_ID);
 
   const applyToolboxVisibility = useCallback((expanded: boolean) => {
     const workspace = workspaceRef.current;
@@ -94,6 +96,14 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
     workspace.registerButtonCallback("CREATE_VARIABLE", (button) => {
       const targetWorkspace = (button as any).getTargetWorkspace?.() ?? workspace;
       Blockly.Variables.createVariableButtonHandler(targetWorkspace);
+    });
+    workspace.registerButtonCallback("CREATE_MY_BLOCK", (button) => {
+      const targetWorkspace = (button as any).getTargetWorkspace?.() ?? workspace;
+      const definition = targetWorkspace.newBlock("my_block_definition") as Blockly.BlockSvg;
+      definition.initSvg();
+      definition.render();
+      definition.moveBy(80, 80);
+      targetWorkspace.centerOnBlock(definition.id);
     });
 
     // Nạp không gian làm việc ban đầu nếu có
@@ -158,10 +168,18 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
       ws.clear();
       const dom = Blockly.utils.xml.textToDom(xml);
       Blockly.Xml.domToWorkspace(dom, ws);
+      Blockly.svgResize(ws);
     } catch {
       // Bỏ qua lỗi nạp
     }
   }, []);
+
+  const handleLoadSelectedSample = useCallback(() => {
+    const sample = SAMPLE_PROGRAMS.find((candidate) => candidate.id === selectedSampleId);
+    if (sample) {
+      loadWorkspaceXml(sample.xml);
+    }
+  }, [loadWorkspaceXml, selectedSampleId]);
 
   // Nạp chương trình mẫu (được gọi từ kho mô phỏng khi khởi tạo)
   const loadSampleProgram = useCallback((xml: string) => {
@@ -187,6 +205,11 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
       (el as any).__blocklyLoadXml = loadWorkspaceXml;
     }
     (window as any).__blocklyLoadSample = loadSampleProgram;
+    (window as any).__htlabSamplePrograms = SAMPLE_PROGRAMS;
+    (window as any).__blocklyLoadSampleById = (id: string) => {
+      const sample = SAMPLE_PROGRAMS.find((candidate) => candidate.id === id);
+      if (sample) loadWorkspaceXml(sample.xml);
+    };
   }, [handleGenerate, getWorkspaceXml, loadWorkspaceXml, loadSampleProgram]);
 
   return (
@@ -223,12 +246,32 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
             </button>
           </div>
         </div>
-        <button
-          onClick={handleGenerate}
-          className="px-2 py-0.5 rounded text-xs font-medium bg-accent hover:bg-accent-light text-white"
-        >
-          Generate IR
-        </button>
+        <div className="flex min-w-0 items-center gap-2">
+          <select
+            value={selectedSampleId}
+            onChange={(event) => setSelectedSampleId(event.target.value)}
+            aria-label="Sample program"
+            className="max-w-40 rounded border border-gray-700 bg-gray-900 px-2 py-0.5 text-xs text-gray-200"
+          >
+            {SAMPLE_PROGRAMS.map((sample) => (
+              <option key={sample.id} value={sample.id}>
+                {sample.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleLoadSelectedSample}
+            className="rounded bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-200 hover:bg-gray-700"
+          >
+            Load
+          </button>
+          <button
+            onClick={handleGenerate}
+            className="px-2 py-0.5 rounded text-xs font-medium bg-accent hover:bg-accent-light text-white"
+          >
+            Generate IR
+          </button>
+        </div>
       </div>
       <div ref={containerRef} className="flex-1" />
     </div>

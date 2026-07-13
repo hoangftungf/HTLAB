@@ -6,7 +6,7 @@ HTLAB là nền tảng web giúp học sinh luyện tập lập trình robot tr�
 
 ## Trạng thái MVP
 
-**Build hoàn thành — 8/8 cards done. 128 tests, 0 failures.**
+**Build hoàn thành — 15/15 flow cards done. Simulation core: 155 tests, 0 failures. Client mixed-workspace smoke: 3 tests, 0 failures.**
 
 - [x] SimulationCore: robot kinematics, 5-in-1 grayscale sensor, map loader, fixed 60Hz
 - [x] IR Interpreter: 14 opcodes, ACC register, 8 variable slots, loop/label/jump
@@ -14,9 +14,9 @@ HTLAB là nền tảng web giúp học sinh luyện tập lập trình robot tr�
 - [x] React 18 + Vite + Tailwind CSS + PixiJS 8 renderer (zoom/pan, robot, trajectory, sensor dots)
 - [x] Telemetry panel (sensor bars, motor bars, pattern, line position gauge)
 - [x] Zustand state management + keyboard shortcuts (Space/R/S)
-- [x] Blockly editor: 13 custom blocks, toolbox, IR code generator
+- [x] Blockly editor: WhalesBot registry toolbox, IR v2 generator, diagnostics
 - [x] Project save/load (localStorage)
-- [x] Sample map + sample program (line-following)
+- [x] Sample map + bundled sample programs (line-following, mixed QA, diagnostics)
 - [ ] Deploy Vercel (vercel.json ready)
 - [ ] Backend (NestJS + PostgreSQL + Redis) — ngoài MVP
 
@@ -47,9 +47,9 @@ HTLAB/
 │   └── client/                          # React 18 + Vite + PixiJS 8 + Blockly
 │       ├── src/
 │       │   ├── blockly/
-│       │   │   ├── blocks.ts            # 13 custom block definitions
+│       │   │   ├── blocks.ts            # WhalesBot block definitions + registry fallbacks
 │       │   │   ├── generator.ts         # IR code generator (workspaceToIR)
-│       │   │   ├── toolbox.ts           # 5-category toolbox config
+│       │   │   ├── toolbox.ts           # Full WhalesBot toolbox config
 │       │   │   └── BlocklyEditor.tsx    # React wrapper (Zelos renderer)
 │       │   ├── components/
 │       │   │   ├── Controls.tsx         # Toolbar (Run/Pause/Step/Reset + speed)
@@ -102,7 +102,7 @@ HTLAB/
 │           └── telemetry/telemetry.test.ts
 │
 ├── flow/                                # Build flow planning artifacts
-├── cards/                               # Build cards (C-001 → C-008)
+├── cards/                               # Build cards (C-001 → C-015)
 ├── maps/sample/                         # Sample map config
 ├── vercel.json                          # Vercel deploy config
 ├── pnpm-workspace.yaml                  # pnpm monorepo workspaces
@@ -157,7 +157,7 @@ HTLAB/
 │  │ noise    │  │  loop + wait   │  │                  │   │
 │  └──────────┘  └────────────────┘  └──────────────────┘   │
 │                                                             │
-│  128 tests · 0 failures · deterministic (same seed=output)  │
+│  155 core tests · 3 client smoke tests · deterministic       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -220,15 +220,23 @@ LOOP_END(12)      END_PROGRAM(13)
 - Loop stack cho LOOP_START/LOOP_END lồng nhau
 - Label map cho JUMP và IF_SENSOR_VALUE
 
-### Blockly Custom Blocks — 13 blocks, 5 categories
+### Blockly Toolbox — WhalesBot registry coverage
 
-| Category | Blocks |
+| Category | Status |
 |----------|--------|
-| Hardware | `initialize`, `calibrate_grayscale` |
-| Movement | `patrol_line`, `turn_left`, `turn_right`, `start_motor` |
-| Sensors | `read_sensor_road`, `sensor_group_detected`, `line_position` |
-| Logic | `if_sensor`, `repeat_loop`, `wait_block` |
-| Variables | `set_var` |
+| Hardware | HTLAB legacy simulator setup blocks |
+| Motion | Tank/single motor implemented where differential-drive physics exists; omni/encoder diagnostics |
+| Light Speaker | Telemetry-only effects and intentional `reading 1` stub |
+| Sensor | Grayscale/timer/encoder implemented; external hardware sensors preserved as expressions/stubs |
+| Event | Main entry marker plus touch-event diagnostic compatibility |
+| Loop | Repeat/wait/break/return flows lower to IR v2; while compatibility remains diagnostic |
+| Logic | If/else, compare, and boolean expressions lower to IR v2 |
+| Math | Arithmetic, modulo, random, round, unary/trig expressions lower to IR v2 |
+| Variable | Blockly variable dialog plus set/change/get and compatibility diagnostics |
+| AI | Recognition compatibility expressions/stubs |
+| Patrol line | Tank line-following route blocks implemented; omni/encoder variants diagnostic |
+| My Blocks | One-parameter custom block definitions/calls execute through IR v2 |
+| C Code | Tiny C-subset payloads generated; client sandbox remains disabled by default |
 
 ## Stack công nghệ
 
@@ -254,8 +262,15 @@ LOOP_END(12)      END_PROGRAM(13)
 | C-006 | Telemetry panel + Zustand store + keyboard shortcuts | — |
 | C-007 | Blockly 13 custom blocks + IR codegen + save/load | — |
 | C-008 | Integration + error handling + vercel config | — |
+| C-009 | WhalesBot block registry + IR v2 contract | docs/metadata |
+| C-010 | Value/boolean/control-flow foundation | covered in core/client checks |
+| C-011 | Motion + Patrol line expanded runtime | covered in core/client checks |
+| C-012 | Sensor + Light Speaker + AI compatibility | covered in core/client checks |
+| C-013 | Variable + My Blocks model | covered in core/client checks |
+| C-014 | C Code sandbox spike, disabled by default | covered in core checks |
+| C-015 | Full toolbox parity, samples, QA smoke | client smoke: 3 pass |
 
-**Tổng: 128 tests, 0 failures. Build: 784 modules, 8.1s.**
+**Tong hien tai: 155 simulation-core tests, 3 client smoke tests, 0 failures in the latest C-015 verification run.**
 
 ## Lộ trình triển khai
 
@@ -275,6 +290,6 @@ LOOP_END(12)      END_PROGRAM(13)
 - [x] Giá trị 5 cảm biến hiển thị theo thời gian thực (sensor bars + pattern)
 - [x] Quan sát được trajectory của robot
 - [x] Pause, reset, step, replay hoạt động
-- [x] Cùng chương trình + seed + config → kết quả giống nhau (128 tests deterministic)
-- [x] SimulationCore chạy độc lập khỏi UI (zero DOM dependencies, 128 unit tests)
+- [x] Cùng chương trình + seed + config → kết quả giống nhau (155 core tests deterministic)
+- [x] SimulationCore chạy độc lập khỏi UI (zero DOM dependencies, 155 unit tests)
 - [ ] Deploy lên public URL (vercel.json ready, chờ Vercel account)

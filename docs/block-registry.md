@@ -17,6 +17,32 @@ Compatibility decisions from `docs/whalesbot-block-studio-dac-ta-block.md` secti
 - Trig and inverse trig use explicit `angleUnit: degree | radian`.
 - `c_code_function` targets real sandboxed C execution and is `blocked-by-sandbox` until the sandbox ships.
 
+## C-015 toolbox and runtime QA status
+
+The Blockly toolbox now exposes every documented registry category:
+`Motion`, `Light Speaker`, `Sensor`, `Event`, `Loop`, `Logic`, `Math`,
+`Variable`, `AI`, `Patrol line`, `My Blocks`, and `C Code`. The app also keeps
+the legacy `Hardware` category for `initialize` and `calibrate_grayscale`.
+
+| Category | Toolbox status | Runtime status and limitation |
+| --- | --- | --- |
+| Motion | Present, including tank, single motor, omni, steering gear, and legacy motion helpers | Differential-drive motor blocks run; encoder and omni blocks emit diagnostics where the simulator has no matching hardware. Steering gear is telemetry-only. |
+| Light Speaker | Present | Sound, LED, display, and electromagnet blocks emit telemetry events. `reading 1` is an intentional stub diagnostic. Color fields use hex text in the current Blockly package because the colour field plugin is not registered. |
+| Sensor | Present | Integrated grayscale, timer, and motor encoder paths are implemented where simulator data exists. Other hardware sensors are preserved as value/boolean expressions or stub diagnostics. |
+| Event | Present | `When program execute` is treated as the main entry marker. Touch-switch async events are preserved and emit a stub diagnostic. |
+| Loop | Present | Repeat, wait, break, return, repeat-until, and wait-until lower to IR v2. While-loop compatibility remains a diagnostic stub. |
+| Logic | Present | If/else and boolean expression blocks lower to IR v2. Unsupported expression-as-statement usage emits a value-block diagnostic. |
+| Math | Present | Arithmetic, modulo, random, round, and unary/trig expressions lower to IR v2. Domain errors are runtime diagnostics. |
+| Variable | Present | Blockly variable dialog, set/change/get, and compatibility create block are present. The create dialog block itself is a no-op diagnostic when dragged into the workspace. |
+| AI | Present | Recognition blocks are compatibility sensor expressions/stubs; no camera model exists yet. |
+| Patrol line | Present | Tank initialization, calibration, line following, timed patrol, intersection, turn, and sensor-stop flows lower to IR v2. Omni and encoder-specific variants emit diagnostics. |
+| My Blocks | Present | One-parameter custom block definitions and calls execute through the function/call-frame model. The create-block dialog compatibility block emits a no-op diagnostic. |
+| C Code | Present | Tiny numeric C-subset payloads are generated, but the client keeps `cSandbox.enabled=false`; runtime emits `HTLAB_C_SANDBOX_DISABLED` unless explicitly enabled in tests. |
+
+Bundled samples in `apps/client/src/store/samplePrograms.ts` cover line
+following, math/logic/control-flow, telemetry-only effects, variables/custom
+blocks, C Code disabled behavior, and a mixed-category QA workspace.
+
 ## Registry table
 
 | Category | Type id | Source block text | Kind | Runtime status | Field schema |

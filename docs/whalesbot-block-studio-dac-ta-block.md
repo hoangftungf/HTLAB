@@ -1024,3 +1024,28 @@ Trạng thái dự án hiện tại theo `flow resume`: planning đã qua `05-co
 - Một số block có semantics phần cứng thật nhưng simulator chưa có thiết bị tương ứng; phải phân biệt `implemented`, `telemetry-only`, `stub`, `blocked-by-sandbox`.
 - `repeat forever`, `wait until` và patrol/intersection dễ gây loop vô hạn; interpreter cần hard cap và telemetry lỗi.
 - Thực thi C thật là security-class work: không bật trong browser/main thread, không cho truy cập DOM/localStorage/network tùy ý, không chạy không timeout.
+
+### 16.6. C-015 UI parity status
+
+The implementation now exposes the documented WhalesBot categories in the HTLAB Blockly toolbox:
+`Motion`, `Light Speaker`, `Sensor`, `Event`, `Loop`, `Logic`, `Math`, `Variable`,
+`AI`, `Patrol line`, `My Blocks`, and `C Code`. HTLAB also keeps a `Hardware`
+category for simulator-specific `initialize` and `calibrate_grayscale` blocks.
+
+Current user-facing limitations:
+
+| Category | Status | Known limitation |
+| --- | --- | --- |
+| Motion | Implemented/stub mix | Differential-drive motor commands run; omni and encoder commands emit diagnostics. |
+| Light Speaker | Telemetry-only | Effects are recorded in runtime telemetry, not rendered as hardware devices. Hex color text is used where the Blockly color field plugin is unavailable. |
+| Sensor | Implemented/stub mix | Grayscale/timer/encoder data is available; external sensors without a simulator model stay as stubs or value expressions. |
+| Event | Compatibility | Main event is an entry marker; async touch events emit diagnostics. |
+| Loop/Logic/Math | IR v2 | Core control-flow and expressions lower to IR v2; unsupported expression-as-statement cases emit diagnostics. |
+| Variable/My Blocks | IR v2 | Variables and one-parameter custom blocks execute; create-dialog compatibility blocks are no-op diagnostics when dragged. |
+| AI | Stub | Recognition blocks preserve shape and diagnostics; no camera model is implemented. |
+| Patrol line | Implemented/stub mix | Tank line following is implemented; omni/encoder variants remain diagnostic approximations. |
+| C Code | Blocked by default | Tiny numeric C subset exists, but the client disables sandbox execution unless explicitly configured. |
+
+C-015 bundled samples cover line following, math/logic/control-flow, telemetry
+effects, variable/custom block behavior, C Code disabled diagnostics, and a
+mixed-category QA workspace that can be saved, reloaded, regenerated, and run.

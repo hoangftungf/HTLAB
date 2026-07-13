@@ -1,5 +1,6 @@
 import * as Blockly from "blockly";
 import { CompareOp, OpCode, type IRCommand, type IRProgram } from "@htlab/simulation-core";
+import { BLOCK_REGISTRY_BY_TYPE } from "./blockRegistry.js";
 
 type IRPrimitiveLocal = string | number | boolean | null;
 type IRRuntimeStatusLocal = "implemented" | "telemetry-only" | "stub" | "blocked-by-sandbox";
@@ -371,6 +372,7 @@ function functionDefinitionFromBlock(block: Blockly.Block): IRFunctionDefinition
 function blockRequiresV2(block: Blockly.Block | null): boolean {
   if (!block) return false;
   if (V2_ONLY_BLOCKS.has(block.type)) return true;
+  if (block.type in BLOCK_REGISTRY_BY_TYPE) return true;
 
   for (const input of block.inputList) {
     const child = input.connection?.targetBlock() ?? null;
@@ -407,16 +409,21 @@ function sourceFor(block: Blockly.Block, category = categoryForType(block.type))
 }
 
 function categoryForType(type: string): string {
+  if (type.startsWith("event_")) return "Event";
+  if (type.startsWith("loop_")) return "Loop";
+  if (type.startsWith("logic_")) return "Logic";
+  if (type.startsWith("math_")) return "Math";
+  if (type.startsWith("variable_") || type.startsWith("variables_")) return "Variable";
   if (type.startsWith("patrol_")) return "Patrol line";
   if (type.startsWith("light_")) return "Light Speaker";
-  if (type.startsWith("my_block")) return "My Blocks";
+  if (type.startsWith("my_block") || type.startsWith("my_blocks")) return "My Blocks";
   if (type.startsWith("c_code")) return "C Code";
   if (type.startsWith("ai_")) return "AI";
-  if (type.includes("motion") || type.includes("motor") || type.includes("turn") || type === "patrol_line") return "Movement";
-  if (type.includes("sensor") || type.includes("line_position") || type.includes("remote")) return "Sensors";
-  if (type.includes("math") || type.includes("value")) return "Values";
-  if (type.includes("logic") || type.includes("control") || type.includes("if") || type.includes("repeat") || type.includes("wait")) return "Control";
-  if (type.includes("var")) return "Variables";
+  if (type.includes("motion") || type.includes("motor") || type.includes("turn") || type === "patrol_line") return "Motion";
+  if (type.includes("sensor") || type.includes("line_position") || type.includes("remote")) return "Sensor";
+  if (type.includes("value")) return "Math";
+  if (type.includes("control") || type.includes("if") || type.includes("repeat") || type.includes("wait")) return "Loop";
+  if (type.includes("var")) return "Variable";
   if (type.includes("initialize") || type.includes("calibrate")) return "Hardware";
   return "Blocks";
 }
@@ -493,8 +500,27 @@ function valueFromInput(block: Blockly.Block, name: string, fallback: IRPrimitiv
   return child ? valueFromBlock(child) : literal(fallback);
 }
 
+function valueFromInputOrField(
+  block: Blockly.Block,
+  inputName: string,
+  fieldName: string,
+  fallback: IRPrimitiveLocal = 0,
+): IRValueExpressionLocal {
+  const child = block.getInputTargetBlock(inputName);
+  return child ? valueFromBlock(child) : literal(fieldNumber(block, fieldName, Number(fallback ?? 0)));
+}
+
 function booleanFromInput(block: Blockly.Block, name: string, fallback = false): IRBooleanExpressionLocal {
   const child = block.getInputTargetBlock(name);
+  return child ? booleanFromBlock(child) : { kind: "literal", value: fallback };
+}
+
+function booleanFromInputOrLiteral(
+  block: Blockly.Block,
+  inputName: string,
+  fallback = false,
+): IRBooleanExpressionLocal {
+  const child = block.getInputTargetBlock(inputName);
   return child ? booleanFromBlock(child) : { kind: "literal", value: fallback };
 }
 
@@ -866,6 +892,46 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
         right: valueFromInput(block, "B", 1),
       };
 
+    case "math_add":
+      return {
+        kind: "binary",
+        op: "+",
+        left: valueFromInputOrField(block, "left", "left", 10),
+        right: valueFromInputOrField(block, "right", "right", 10),
+      };
+
+    case "math_subtract":
+      return {
+        kind: "binary",
+        op: "-",
+        left: valueFromInputOrField(block, "left", "left", 10),
+        right: valueFromInputOrField(block, "right", "right", 10),
+      };
+
+    case "math_multiply":
+      return {
+        kind: "binary",
+        op: "*",
+        left: valueFromInputOrField(block, "left", "left", 10),
+        right: valueFromInputOrField(block, "right", "right", 10),
+      };
+
+    case "math_divide":
+      return {
+        kind: "binary",
+        op: "/",
+        left: valueFromInputOrField(block, "left", "left", 10),
+        right: valueFromInputOrField(block, "right", "right", 10),
+      };
+
+    case "math_modulo":
+      return {
+        kind: "binary",
+        op: "%",
+        left: valueFromInput(block, "a", 0),
+        right: valueFromInput(block, "b", 1),
+      };
+
     case "math_unary":
       return {
         kind: "unary",
@@ -883,11 +949,29 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
         angleUnit: block.type === "math_trig" ? "degree" : angleUnitFromField(block),
       };
 
+    case "math_round":
+      return {
+        kind: "unary",
+        op: "round",
+        arg: valueFromInput(block, "value", 0),
+      };
+
+    case "math_unary_function":
+      return {
+        kind: "unary",
+        op: fieldText(block, "op", "abs").toLowerCase(),
+        arg: valueFromInput(block, "value", 0),
+        angleUnit: fieldText(block, "angleUnit", "degree") === "radian" ? "radian" : "degree",
+      };
+
     case "math_random_range":
       return {
         kind: "call",
         callee: "randomRange",
-        args: [valueFromInput(block, "MIN", 0), valueFromInput(block, "MAX", 10)],
+        args: [
+          block.getInput("MIN") ? valueFromInput(block, "MIN", 0) : literal(fieldNumber(block, "min", 0)),
+          block.getInput("MAX") ? valueFromInput(block, "MAX", 10) : literal(fieldNumber(block, "max", 10)),
+        ],
       };
 
     case "my_block_call_value":
@@ -927,6 +1011,38 @@ function booleanFromBlock(block: Blockly.Block): IRBooleanExpressionLocal {
         right: valueFromInput(block, "B", 0),
       };
 
+    case "logic_compare_lt":
+      return {
+        kind: "compare",
+        op: "LT",
+        left: valueFromInput(block, "a", 0),
+        right: valueFromInput(block, "b", 0),
+      };
+
+    case "logic_compare_gt":
+      return {
+        kind: "compare",
+        op: "GT",
+        left: valueFromInput(block, "a", 0),
+        right: valueFromInput(block, "b", 0),
+      };
+
+    case "logic_compare_eq":
+      return {
+        kind: "compare",
+        op: "EQ",
+        left: valueFromInput(block, "a", 0),
+        right: valueFromInput(block, "b", 0),
+      };
+
+    case "logic_compare_neq":
+      return {
+        kind: "compare",
+        op: "NEQ",
+        left: valueFromInput(block, "a", 0),
+        right: valueFromInput(block, "b", 0),
+      };
+
     case "logic_operation":
     case "logic_operation_v2": {
       const args = [booleanFromInput(block, "A", false), booleanFromInput(block, "B", false)];
@@ -935,9 +1051,30 @@ function booleanFromBlock(block: Blockly.Block): IRBooleanExpressionLocal {
         : { kind: "and", args };
     }
 
+    case "logic_and":
+      return {
+        kind: "and",
+        args: [
+          booleanFromInputOrLiteral(block, "cond1", false),
+          booleanFromInputOrLiteral(block, "cond2", false),
+        ],
+      };
+
+    case "logic_or":
+      return {
+        kind: "or",
+        args: [
+          booleanFromInputOrLiteral(block, "cond1", false),
+          booleanFromInputOrLiteral(block, "cond2", false),
+        ],
+      };
+
     case "logic_negate":
     case "logic_not_v2":
       return { kind: "not", arg: booleanFromInput(block, "BOOL", false) };
+
+    case "logic_not":
+      return { kind: "not", arg: booleanFromInputOrLiteral(block, "condition", false) };
 
     case "sensor_group_detected":
     case "logic_sensor_group":
@@ -1434,6 +1571,99 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
         ),
       ];
 
+    case "event_program_execute":
+      return [];
+
+    case "event_touch_switch_pressed":
+      return [
+        commandNode(
+          block,
+          "event.touchSwitchPressed",
+          { port: fieldText(block, "port", "1") },
+          undefined,
+          "stub",
+          "runtime.diagnostic.asyncEventsNotImplemented",
+        ),
+      ];
+
+    case "loop_repeat_forever":
+      return [
+        commandNode(
+          block,
+          "control.repeatForever",
+          {},
+          { do: blockSequenceToV2Nodes(block.getInputTargetBlock("do")) },
+        ),
+      ];
+
+    case "loop_repeat_times":
+      return [
+        commandNode(
+          block,
+          "control.repeatTimes",
+          { times: literal(fieldNumber(block, "times", 10)) },
+          { do: blockSequenceToV2Nodes(block.getInputTargetBlock("do")) },
+        ),
+      ];
+
+    case "loop_while_condition":
+      return [
+        commandNode(
+          block,
+          "control.while",
+          { condition: booleanFromInput(block, "condition", false) },
+          { do: blockSequenceToV2Nodes(block.getInputTargetBlock("do")) },
+          "stub",
+          "runtime.diagnostic.booleanFlowNotImplemented",
+        ),
+      ];
+
+    case "loop_repeat_until":
+      return [
+        commandNode(
+          block,
+          "control.repeatUntil",
+          { condition: booleanFromInput(block, "condition", false) },
+          { do: blockSequenceToV2Nodes(block.getInputTargetBlock("do")) },
+        ),
+      ];
+
+    case "loop_break":
+      return [commandNode(block, "control.break")];
+
+    case "loop_wait_seconds":
+      return [commandNode(block, "control.waitSeconds", { seconds: literal(fieldNumber(block, "seconds", 2)) })];
+
+    case "loop_wait_until":
+      return [
+        commandNode(block, "control.waitUntil", {
+          condition: booleanFromInput(block, "condition", false),
+        }),
+      ];
+
+    case "logic_if_then":
+      return [
+        commandNode(
+          block,
+          "control.if",
+          { condition: booleanFromInput(block, "condition", false) },
+          { then: blockSequenceToV2Nodes(block.getInputTargetBlock("then")) },
+        ),
+      ];
+
+    case "logic_if_then_else":
+      return [
+        commandNode(
+          block,
+          "control.ifElse",
+          { condition: booleanFromInput(block, "condition", false) },
+          {
+            then: blockSequenceToV2Nodes(block.getInputTargetBlock("then")),
+            else: blockSequenceToV2Nodes(block.getInputTargetBlock("else")),
+          },
+        ),
+      ];
+
     case "if_sensor": {
       const road = fieldNumber(block, "ROAD", 3);
       return [
@@ -1539,6 +1769,18 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
     case "loop_return_value":
       return [commandNode(block, "control.return", { value: valueFromInput(block, "value", null) })];
 
+    case "variable_create":
+      return [
+        diagnosticNode(
+          block,
+          "HTLAB_VARIABLE_CREATE_DIALOG",
+          "Create variable is represented by the Blockly variable dialog; this compatibility block has no runtime effect.",
+          "info",
+          "stub",
+          "runtime.diagnostic.variablesDialog",
+        ),
+      ];
+
     case "set_var":
       return [
         commandNode(block, "variable.set", {
@@ -1580,6 +1822,18 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
         }),
       ];
 
+    case "my_blocks_create":
+      return [
+        diagnosticNode(
+          block,
+          "HTLAB_MY_BLOCKS_CREATE_DIALOG",
+          "Create new blocks opens the custom-block authoring flow; this compatibility block has no runtime effect.",
+          "info",
+          "stub",
+          "runtime.diagnostic.functionsDialog",
+        ),
+      ];
+
     case "c_code_function": {
       const input = valueFromInput(block, "ARG", 0);
       const payload = cCodePayloadForBlock(block, input);
@@ -1607,10 +1861,24 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
     case "math_remainder":
     case "math_unary":
     case "math_random_range":
+    case "math_add":
+    case "math_subtract":
+    case "math_multiply":
+    case "math_divide":
+    case "math_modulo":
+    case "math_round":
+    case "math_unary_function":
     case "logic_literal_v2":
     case "logic_compare_v2":
     case "logic_operation_v2":
     case "logic_not_v2":
+    case "logic_compare_lt":
+    case "logic_compare_gt":
+    case "logic_compare_eq":
+    case "logic_compare_neq":
+    case "logic_and":
+    case "logic_or":
+    case "logic_not":
     case "logic_sensor_group":
     case "remote_control_button":
     case "sensor_integrated_grayscale_value":
