@@ -560,6 +560,36 @@ Blockly.Blocks["math_random_range"] = {
   },
 };
 
+Blockly.Blocks["math_modulo"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_modulo",
+      message0: "remainder of %1 by %2",
+      args0: [
+        { type: "input_value", name: "a", check: "Number" },
+        { type: "input_value", name: "b", check: "Number" },
+      ],
+      inputsInline: true,
+      colour: BLOCK_COLOURS.values,
+      output: "Number",
+      tooltip: "Remainder after dividing a by b",
+    });
+  },
+};
+
+Blockly.Blocks["math_round"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_round",
+      message0: "round %1",
+      args0: [{ type: "input_value", name: "value", check: "Number" }],
+      colour: BLOCK_COLOURS.values,
+      output: "Number",
+      tooltip: "Round a numeric value",
+    });
+  },
+};
+
 Blockly.Blocks["logic_literal_v2"] = {
   init(this: Blockly.Block) {
     this.jsonInit({

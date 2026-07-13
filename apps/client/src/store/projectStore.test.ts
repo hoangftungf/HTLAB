@@ -8,6 +8,7 @@ import {
   DEFAULT_ROBOT_CONFIG,
 } from "@htlab/simulation-core";
 import "../blockly/blocks.js";
+import { toolbox } from "../blockly/toolbox.js";
 import { workspaceToIR } from "../blockly/generator.js";
 import { loadProject, saveProject } from "./projectStore.js";
 import { SAMPLE_PROGRAMS } from "./samplePrograms.js";
@@ -44,6 +45,22 @@ function connectNext(parent: Blockly.Block, child: Blockly.Block): void {
     throw new Error(`Cannot connect ${parent.type} to ${child.type}`);
   }
   parent.nextConnection.connect(child.previousConnection);
+}
+
+type ToolboxItem = {
+  kind: string;
+  type?: string;
+  inputs?: Record<string, unknown>;
+  fields?: Record<string, unknown>;
+  contents?: ToolboxItem[];
+};
+
+function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem[] = []): ToolboxItem[] {
+  for (const item of items) {
+    if (item.kind === "block") blocks.push(item);
+    if (item.contents) collectToolboxBlocks(item.contents, blocks);
+  }
+  return blocks;
 }
 
 function makeWorkspace(): Blockly.Workspace {
@@ -203,6 +220,26 @@ describe("projectStore C-013 save/load compatibility", () => {
     expect(block.getField("max")).not.toBeNull();
     expect(block.getInput("MIN")).toBeNull();
     expect(block.getInput("MAX")).toBeNull();
+  });
+
+  it("keeps toolbox input and field names aligned with block definitions", () => {
+    const workspace = new Blockly.Workspace();
+    const toolboxBlocks = collectToolboxBlocks((toolbox as { contents: ToolboxItem[] }).contents);
+
+    for (const toolboxBlock of toolboxBlocks) {
+      if (!toolboxBlock.type) continue;
+      const block = workspace.newBlock(toolboxBlock.type);
+
+      for (const inputName of Object.keys(toolboxBlock.inputs ?? {})) {
+        const input = block.getInput(inputName);
+        expect(input, `${toolboxBlock.type}.${inputName}`).not.toBeNull();
+        expect(input?.connection, `${toolboxBlock.type}.${inputName}`).not.toBeNull();
+      }
+
+      for (const fieldName of Object.keys(toolboxBlock.fields ?? {})) {
+        expect(block.getField(fieldName), `${toolboxBlock.type}.${fieldName}`).not.toBeNull();
+      }
+    }
   });
 
   it("preserves variable ids and custom-block definitions through save/load/regenerate", () => {
