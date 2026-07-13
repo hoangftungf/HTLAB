@@ -2,206 +2,279 @@
 
 **Nền tảng mô phỏng sa bàn ảo và lập trình khối lệnh cho Robotics**
 
-HTLAB là nền tảng web giúp học sinh luyện tập lập trình robot trên sa bàn ảo thông qua giao diện kéo thả khối lệnh (Blockly). Dự án kết hợp mô phỏng vật lý 2D deterministic, hệ thống telemetry và headless simulation để hỗ trợ học, thử nghiệm thuật toán và huấn luyện thi đấu Robotics.
+HTLAB là nền tảng web giúp học sinh luyện tập lập trình robot trên sa bàn ảo thông qua giao diện kéo thả khối lệnh (Blockly). Dự án kết hợp mô phỏng vật lý 2D deterministic, hệ thống telemetry và replay, hỗ trợ học, thử nghiệm thuật toán và huấn luyện thi đấu Robotics.
 
-Mục tiêu dài hạn: trở thành môi trường luyện tập Digital Twin cho các bài toán robot dò line, điều khiển vi sai, xử lý cảm biến và tối ưu thời gian chạy sa bàn.
+## Trạng thái MVP
 
-## 1. Bối cảnh và vấn đề
+**Build hoàn thành — 8/8 cards done. 128 tests, 0 failures.**
 
-Trong huấn luyện Robotics, đặc biệt với các bài thi dạng sa bàn như EnjoyAI, học sinh và giáo viên gặp các hạn chế:
+- [x] SimulationCore: robot kinematics, 5-in-1 grayscale sensor, map loader, fixed 60Hz
+- [x] IR Interpreter: 14 opcodes, ACC register, 8 variable slots, loop/label/jump
+- [x] Telemetry recorder + deterministic replay + diff tool
+- [x] React 18 + Vite + Tailwind CSS + PixiJS 8 renderer (zoom/pan, robot, trajectory, sensor dots)
+- [x] Telemetry panel (sensor bars, motor bars, pattern, line position gauge)
+- [x] Zustand state management + keyboard shortcuts (Space/R/S)
+- [x] Blockly editor: 13 custom blocks, toolbox, IR code generator
+- [x] Project save/load (localStorage)
+- [x] Sample map + sample program (line-following)
+- [ ] Deploy Vercel (vercel.json ready)
+- [ ] Backend (NestJS + PostgreSQL + Redis) — ngoài MVP
 
-- Không đủ robot hoặc sa bàn vật lý cho tất cả học sinh.
-- Thử sai thuật toán tốn thời gian, dễ hỏng thiết bị hoặc lệch cấu hình.
-- Khó quan sát trực tiếp giá trị cảm biến, sai số, tốc độ động cơ và quỹ đạo.
-- Giáo viên khó so sánh nhiều lần chạy, phân tích nguyên nhân robot chạy sai.
-- Khi thi trực tuyến, kết quả từ client có nguy cơ bị can thiệp.
+## Chạy dự án local
 
-HTLAB giải quyết các vấn đề trên bằng môi trường mô phỏng chạy trên trình duyệt, có ghi log, replay và xác thực kết quả phía server.
+```bash
+# Cài dependencies
+pnpm install
 
-## 2. Mô hình robot và cảm biến
+# Chạy toàn bộ (Turborepo)
+pnpm dev
 
-### 2.1. Robot
+# Hoặc chạy riêng client
+cd apps/client
+npx vite --port 5173
+# Mở http://localhost:5173
+
+# Chạy test
+cd packages/simulation-core
+npx vitest run
+```
+
+## Cấu trúc dự án
+
+```
+HTLAB/
+├── apps/
+│   └── client/                          # React 18 + Vite + PixiJS 8 + Blockly
+│       ├── src/
+│       │   ├── blockly/
+│       │   │   ├── blocks.ts            # 13 custom block definitions
+│       │   │   ├── generator.ts         # IR code generator (workspaceToIR)
+│       │   │   ├── toolbox.ts           # 5-category toolbox config
+│       │   │   └── BlocklyEditor.tsx    # React wrapper (Zelos renderer)
+│       │   ├── components/
+│       │   │   ├── Controls.tsx         # Toolbar (Run/Pause/Step/Reset + speed)
+│       │   │   ├── SimulationView.tsx   # PixiJS 8 canvas (map, robot, trajectory)
+│       │   │   ├── TelemetryPanel.tsx   # Sensor bars, pattern, line gauge
+│       │   │   ├── ReplayControls.tsx   # Replay frame scrubber
+│       │   │   └── ProjectManager.tsx   # Save/Load dialogs
+│       │   ├── hooks/
+│       │   │   └── useSimulation.ts     # (legacy hook, superseded by Zustand)
+│       │   ├── store/
+│       │   │   ├── simStore.ts          # Zustand store (sim, interpreter, replay)
+│       │   │   └── projectStore.ts      # localStorage persistence
+│       │   ├── App.tsx                  # 3-column layout (Blockly|Canvas|Telemetry)
+│       │   ├── main.tsx                 # React entry point
+│       │   └── index.css                # Tailwind base
+│       ├── public/favicon.svg
+│       ├── index.html
+│       ├── package.json
+│       ├── vite.config.ts
+│       └── tailwind.config.ts
+│
+├── packages/
+│   └── simulation-core/                 # Zero-dependency TypeScript library
+│       ├── src/
+│       │   ├── types.ts                 # All core types + interfaces
+│       │   ├── sim.ts                   # Simulation factory (createSimulation)
+│       │   ├── kinematics.ts            # Differential drive kinematics
+│       │   ├── map.ts                   # Map loader + pixel sampling
+│       │   ├── rng.ts                   # Seeded PRNG (mulberry32)
+│       │   ├── replay.ts                # Replay simulation factory
+│       │   ├── index.ts                 # Package entry point
+│       │   ├── sensor/
+│       │   │   ├── grayscale.ts         # 5-in-1 line sensor model
+│       │   │   └── index.ts
+│       │   ├── interpreter/
+│       │   │   ├── types.ts             # OpCode, IRCommand, IRProgram, Interpreter
+│       │   │   ├── interpreter.ts       # 14-opcode IR interpreter
+│       │   │   └── index.ts
+│       │   └── telemetry/
+│       │       ├── types.ts             # ReplaySimulation, TelemetryDiff
+│       │       ├── diff.ts              # diffTelemetry — compare two logs
+│       │       └── index.ts
+│       └── test/
+│           ├── kinematics.test.ts
+│           ├── map.test.ts
+│           ├── rng.test.ts
+│           ├── sim.test.ts
+│           ├── sensor/grayscale.test.ts
+│           ├── interpreter/interpreter.test.ts
+│           └── telemetry/telemetry.test.ts
+│
+├── flow/                                # Build flow planning artifacts
+├── cards/                               # Build cards (C-001 → C-008)
+├── maps/sample/                         # Sample map config
+├── vercel.json                          # Vercel deploy config
+├── pnpm-workspace.yaml                  # pnpm monorepo workspaces
+├── turbo.json                           # Turborepo config
+├── tsconfig.base.json                   # Shared TypeScript config
+├── package.json                         # Root package.json
+└── README.md
+```
+
+## Kiến trúc hệ thống
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                apps/client (Browser)                        │
+│                                                             │
+│  ┌──────────┐  ┌────────────────┐  ┌────────────────────┐  │
+│  │ Blockly  │  │  Simulation    │  │  Telemetry Panel   │  │
+│  │ Editor   │  │  View          │  │  (React)           │  │
+│  │ 13 block │  │  (PixiJS 8)    │  │                    │  │
+│  │ types    │  │                │  │  Sensor bars (x5)  │  │
+│  │          │  │  Map bg +      │  │  Motor L/R bars    │  │
+│  │ Drag→IR  │  │  Robot ▲ +    │  │  Pattern "00100"   │  │
+│  │          │  │  Trajectory +  │  │  Line gauge ±100   │  │
+│  │          │  │  Sensor dots   │  │  Tick counter      │  │
+│  └────┬─────┘  └───────┬────────┘  └────────────────────┘  │
+│       │                │                                    │
+│       │        ┌───────┴────────┐                          │
+│       │        │  Zustand Store │                          │
+│       └───────→│  simStore.ts   │←─────────────────────────┘
+│     IRProgram  │                │
+│                │  sim           │
+│                │  interpreter   │
+│                │  replaySim     │
+│                │  running/tick  │
+│                │  speed/error   │
+│                └───────┬────────┘
+└────────────────────────┼───────────────────────────────────┘
+                         │
+┌────────────────────────┼───────────────────────────────────┐
+│     packages/simulation-core (zero deps, browser + Node)   │
+│                         │                                   │
+│  ┌──────────────────────┼──────────────────────────────┐   │
+│  │                Simulation                           │   │
+│  │  tick(): sensor.sample() → kinematics → telemetry   │   │
+│  └──────────────────────┬──────────────────────────────┘   │
+│                         │                                   │
+│  ┌──────────┐  ┌───────┴────────┐  ┌──────────────────┐   │
+│  │ Sensor   │  │  Interpreter   │  │  Telemetry       │   │
+│  │ 5-in-1   │  │  14 opcodes    │  │  Recorder        │   │
+│  │ pattern  │  │  ACC + 8 vars  │  │  Replay + Diff   │   │
+│  │ calibrate│  │  label + jump  │  │  Ring buffer     │   │
+│  │ noise    │  │  loop + wait   │  │                  │   │
+│  └──────────┘  └────────────────┘  └──────────────────┘   │
+│                                                             │
+│  128 tests · 0 failures · deterministic (same seed=output)  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Luồng dữ liệu end-to-end
+
+```
+Blockly Editor          IR Generator            Interpreter
+┌──────────┐   XML    ┌──────────────┐  IR    ┌──────────────┐
+│ Kéo thả  │ ───────→ │ workspaceToIR│ ─────→ │ createInterp  │
+│ block    │          │ 13 generators│        │ 14 opcodes    │
+└──────────┘          └──────────────┘        └──────┬───────┘
+                                                     │
+                                        step() → setMotors()
+                                        reads  ← sim.state.sensors
+                                                     │
+┌──────────────┐    ┌──────────────┐    ┌───────────┴──────┐
+│ Telemetry    │ ←─ │ Simulation   │ ←─ │ Zustand Store    │
+│ Panel (UI)   │    │ tick() 60Hz  │    │ run/stop/step    │
+└──────────────┘    └──────┬───────┘    └──────────────────┘
+                           │ sim.state (rAF each frame)
+                    ┌──────┴───────┐
+                    │ PixiJS 8     │
+                    │ Renderer     │
+                    │ map+robot    │
+                    │ +trajectory  │
+                    └──────────────┘
+```
+
+## Mô hình robot và cảm biến
+
+### Robot
 
 - **Loại:** Differential drive (2 bánh chủ động)
-- **Kích thước tối đa:** 30 x 30 cm
-- **Tham số configurable:** wheelbase, wheelRadius, maxSpeed, maxAccel, friction, deadzone, noise
-- **Cấu hình:** lưu trong `RobotConfig`, có thể tạo nhiều preset
+- **Configurable:** wheelbase, wheelRadius, maxSpeed, maxAccel, friction, deadzone
+- **Sensor config:** sensorSpacing, sensorOffset, sensorNoise, sensorBias, latency
+- **Cấu hình:** `RobotConfig` trong `packages/simulation-core/src/types.ts`
 
-### 2.2. Cảm biến Grayscale 5-in-1
+### Cảm biến Grayscale 5-in-1
 
-Cảm biến dò line chính, mô phỏng theo mô hình WhalesBot/EnjoyAI:
+- **5 mắt** (Road 1 → Road 5), hàng ngang phía trước robot, khoảng cách configurable
+- **Giá trị:** 0 (nền trắng) → 100 (line đen), tính từ grayscale pixel + threshold
+- **Pattern nhị phân:** `"00100"`, `"01110"`, `"11100"` — mỗi ký tự on/off theo ngưỡng 50
+- **Nhóm cảm biến:** left (R1-R3), middle (R2-R4), right (R3-R5)
+- **Line position:** weighted centroid, -100 (far left) → +100 (far right)
+- **Hiệu chuẩn:** hai pha (white floor → black line), per-road thresholds nội bộ
+- **Noise/bias/latency:** configurable, Gaussian noise qua seeded RNG
 
-- **5 mắt** (Road 1 → Road 5), bố trí hàng ngang phía trước robot
-- **Giá trị:** 0 (nền trắng) → 100 (line đen)
-- **Pattern nhị phân:** mỗi mắt on/off theo threshold, tạo pattern như `00100`, `01110`, `11100`
-- **Nhóm cảm biến:** left (Road 1-2-3), middle (Road 2-3-4), right (Road 3-4-5)
-- **Line position:** tính bằng trọng số, dùng cho P-controller dò line
-- **Hiệu chuẩn:** black-and-white detection bắt buộc trước khi dò line
-- **Noise:** sensorNoise, sensorBias, latency có thể cấu hình theo chế độ luyện tập
-
-Chi tiết: xem [docs/cam-bien-grayscale-5-in-1.md](docs/cam-bien-grayscale-5-in-1.md)
-
-## 3. Mô hình lập trình
-
-### 3.1. Blockly → IR → Interpreter
-
-Blockly không sinh JavaScript. Thay vào đó:
+### IR Interpreter — 14 opcodes
 
 ```
-Blockly workspace → Code Generator → IR (JSON) → Interpreter → MotorCommand mỗi tick
+INIT_HARDWARE(0)  CALIBRATE_GRAYSCALE(1)  SET_MOTOR(2)
+WAIT_TICKS(3)     READ_SENSOR_ROAD(4)     READ_SENSOR_GROUP(5)
+READ_LINE_POSITION(6)  IF_SENSOR_VALUE(7)  SET_VAR(8)
+LABEL(9)          JUMP(10)               LOOP_START(11)
+LOOP_END(12)      END_PROGRAM(13)
 ```
 
-- **IR (Intermediate Representation):** tập lệnh domain-specific, mỗi block là một stateful command
-- **Interpreter:** chạy step-by-step mỗi simulation tick, giới hạn 1000 instruction/tick
-- **Kết quả:** deterministic, an toàn, chạy được cả trên browser và headless
+- Max 1000 instructions/tick, configurable runtime cap (default 18000 ticks = 5 phút)
+- ACC register + 8 variable slots (SET_VAR/GET_VAR)
+- Loop stack cho LOOP_START/LOOP_END lồng nhau
+- Label map cho JUMP và IF_SENSOR_VALUE
 
-### 3.2. Các block chính
+### Blockly Custom Blocks — 13 blocks, 5 categories
 
-| Nhóm | Block |
-|---|---|
-| Hardware | `initialize`, `black and white detection` |
-| Dò line | `patrol line`, `patrol line for time`, `patrol line intersections` |
-| Rẽ | `turn [left/middle/right]` |
-| Motor thuần | `start motor time`, `start motor angle` |
-| Cảm biến | `read grayscale sensor`, `sensor group detected`, `line position` |
-| Logic | `if/else`, `repeat`, `while`, `wait` |
-| Biến & Math | `set/get variable`, toán tử cơ bản |
+| Category | Blocks |
+|----------|--------|
+| Hardware | `initialize`, `calibrate_grayscale` |
+| Movement | `patrol_line`, `turn_left`, `turn_right`, `start_motor` |
+| Sensors | `read_sensor_road`, `sensor_group_detected`, `line_position` |
+| Logic | `if_sensor`, `repeat_loop`, `wait_block` |
+| Variables | `set_var` |
 
-### 3.3. Các command chính trong IR
-
-```
-INIT_HARDWARE, CALIBRATE_GRAYSCALE, SET_MOTOR, WAIT_TICKS,
-READ_SENSOR_ROAD, READ_SENSOR_GROUP, READ_LINE_POSITION,
-IF_SENSOR_VALUE, IF_GROUP_DETECTED,
-SET_VAR, LABEL, JUMP, LOOP_START, LOOP_END,
-END_PROGRAM
-```
-
-## 4. Map (sa bàn)
-
-- **Định dạng:** ảnh PNG (top-down) + file metadata JSON
-- **Kích thước:** configurable (VD: 2400x1200mm, scale 1px = 1mm)
-- **Sensor sampling:** SimulationCore đọc pixel trực tiếp từ ImageData (browser) hoặc sharp buffer (Node.js headless)
-- **Metadata:** chứa kích thước, scale, calibration defaults, checkpoint, finishZone, startPose
-- **Tạo map:** vẽ bằng bất kỳ phần mềm đồ họa nào, thêm file JSON metadata
-
-## 5. Kiến trúc hệ thống
-
-```
-┌────────────────────────────────────────┐
-│            Client (Browser)            │
-│                                        │
-│  React (UI)   Blockly (Editor)         │
-│       │            │                   │
-│       └────────────┼───────────────┐   │
-│                    │               │   │
-│           PixiJS 8 (Renderer)      │   │
-│                    │               │   │
-│            SimulationCore + Interpreter │
-└────────────────────┼───────────────────┘
-                     │
-          ┌──────────▼──────────┐
-          │   Backend (NestJS)  │
-          │                     │
-          │  REST API (JWT)     │
-          │  Headless Sim Runner│
-          │  BullMQ Worker      │
-          └──────────┬──────────┘
-                     │
-          ┌──────────▼──────────┐
-          │ PostgreSQL + Redis  │
-          └─────────────────────┘
-```
-
-### Nguyên tắc cốt lõi
-
-1. **SimulationCore là package riêng, zero dependencies** — chạy được trên browser và Node.js
-2. **PixiJS chỉ render** — không chứa logic vật lý
-3. **Fixed timestep 60Hz** — kết quả không phụ thuộc FPS máy
-4. **Deterministic** — cùng chương trình + seed + config = cùng kết quả
-5. **Blockly sinh IR, không sinh JS** — an toàn, kiểm soát được
-
-## 6. Stack công nghệ
+## Stack công nghệ
 
 | Layer | Công nghệ |
 |---|---|
 | Simulation Core | TypeScript (strict), zero deps, vitest |
 | Client UI | React 18, Vite, Tailwind CSS, Zustand |
 | Client Renderer | PixiJS 8 |
-| Block Editor | Blockly (npm) + custom blocks + IR codegen |
-| Backend | NestJS, Prisma, Zod, JWT |
-| Database | PostgreSQL + JSONB |
-| Job Queue | BullMQ (Redis) |
+| Block Editor | Blockly 11 (Zelos renderer) + custom blocks + IR codegen |
 | Monorepo | Turborepo + pnpm workspaces |
+| Deploy | Vercel (static site) |
+| Backend (ngoài MVP) | NestJS, Prisma, PostgreSQL, Redis, BullMQ |
 
-Chi tiết: xem [docs/technology-stack.md](docs/technology-stack.md)
+## Tiến độ (theo flow cards)
 
-## 7. MVP
+| Card | Nội dung | Tests |
+|------|----------|-------|
+| C-001 | SimulationCore: kinematics + map + fixed 60Hz | 46 pass |
+| C-002 | Grayscale 5-in-1 sensor model (noise, bias, latency, calibrate) | 31 pass |
+| C-003 | IR Interpreter: 14 opcodes (ACC, vars, loop, label, jump) | 27 pass |
+| C-004 | Telemetry recorder + replay + diff tool | 24 pass |
+| C-005 | React 18 + PixiJS 8 renderer + zoom/pan | — |
+| C-006 | Telemetry panel + Zustand store + keyboard shortcuts | — |
+| C-007 | Blockly 13 custom blocks + IR codegen + save/load | — |
+| C-008 | Integration + error handling + vercel config | — |
 
-Phạm vi MVP được thu hẹp để chứng minh phần khó nhất: robot mô phỏng đúng, cảm biến đọc đúng, thuật toán debug được.
+**Tổng: 128 tests, 0 failures. Build: 784 modules, 8.1s.**
 
-### Trong MVP
+## Lộ trình triển khai
 
-- 1 sa bàn mẫu (PNG + metadata)
-- 1 robot differential drive (configurable qua RobotConfig)
-- Cảm biến Grayscale 5-in-1 đầy đủ (đọc, calibrate, pattern, group, line position)
-- Blockly với ~12 custom blocks (initialize, calibrate, patrol line x3, turn, motor x2, sensor x3, + logic/variable cơ bản)
-- Interpreter chạy IR step-by-step mỗi tick
-- Run, Pause, Reset, Step, Speed control
-- Telemetry panel: 5 giá trị sensor, motor speed, trajectory, pattern text
-- Telemetry recorder + replay deterministic từ file log
-- Giao diện React + PixiJS đầy đủ (map, robot, sensor indicators, trajectory)
-- Lưu/load project (localStorage cho MVP chưa có backend)
-
-### Ngoài MVP
-
-- Backend, auth, database
-- Nhiều loại robot, nhiều sa bàn
-- Classroom, lesson mode
-- Leaderboard + headless verification
-- Map editor
-- PID visualizer
-- Export code cho robot thật
-
-## 8. Lộ trình triển khai
-
-| Giai đoạn | Nội dung chính | Đầu ra |
+| Giai đoạn | Nội dung | Trạng thái |
 |---|---|---|
-| **G1: SimulationCore** | Robot kinematics, sensor model, map loader, physics, interpreter (8 command), telemetry, replay. Test coverage > 80%. | Robot chạy dò line bằng IR hard-code, deterministic replay |
-| **G2: Giao diện** | React shell, PixiJS renderer, run/pause/reset/step, telemetry panel | Nhìn thấy robot chạy, debug được sensor |
-| **G3: Blockly** | Custom blocks, custom toolbox, IR code generator, workspace save/load | Kéo thả block lập trình robot |
-| **G4: Backend** | NestJS, Prisma, auth (JWT), project CRUD, map upload, run storage | Tài khoản, lưu bài làm |
-| **G5: Leaderboard** | BullMQ headless worker, submission flow, result verification, leaderboard UI | Thi đấu online có xác thực |
-| **G6: Ecosystem** | Lesson mode, classroom dashboard, map editor, PID visualizer, code export | Nền tảng huấn luyện hoàn chỉnh |
+| **G1: SimulationCore** | Kinematics, sensor, map, interpreter, telemetry, replay | Done |
+| **G2: Giao diện** | React shell, PixiJS renderer, controls, telemetry panel | Done |
+| **G3: Blockly** | Custom blocks, IR generator, toolbox, save/load | Done |
+| **G4: Backend** | NestJS, Prisma, auth (JWT), project CRUD | Ngoài MVP |
+| **G5: Leaderboard** | Headless worker, submission flow, leaderboard | Ngoài MVP |
+| **G6: Ecosystem** | Classroom, map editor, PID visualizer, code export | Ngoài MVP |
 
-Chi tiết: xem [docs/implementation-plan.md](docs/implementation-plan.md)
+## Tiêu chí thành công MVP
 
-## 9. Tiêu chí thành công
-
-Một prototype được xem là thành công nếu:
-
-- Robot chạy theo line trên sa bàn mẫu
-- Học sinh điều khiển robot bằng Blockly
-- Giá trị 5 cảm biến hiển thị rõ ràng theo thời gian thực
-- Quan sát được trajectory của robot
-- Pause, reset, step, replay hoạt động
-- Cùng chương trình + seed + config → kết quả giống nhau qua mọi lần chạy
-- SimulationCore chạy độc lập khỏi UI, test được không cần DOM
-
-## 10. Tài liệu chi tiết
-
-| Tài liệu | Nội dung |
-|---|---|
-| [docs/cam-bien-grayscale-5-in-1.md](docs/cam-bien-grayscale-5-in-1.md) | Mô hình cảm biến, calibration, pattern, group, line position, noise |
-| [docs/technology-stack.md](docs/technology-stack.md) | Stack công nghệ, kiến trúc, database schema, cấu trúc monorepo |
-| [docs/implementation-plan.md](docs/implementation-plan.md) | Kế hoạch triển khai chi tiết 6 giai đoạn, task breakdown, dependencies |
-
-## 11. Rủi ro và hướng xử lý
-
-| Rủi ro | Xử lý |
-|---|---|
-| Khoảng cách mô phỏng - thực tế | Noise, trễ motor, ma sát, sai số bánh xe đều configurable. Đánh giá qua nhiều seed. |
-| SimulationCore phụ thuộc UI | Package riêng, PixiJS chỉ render state, mọi physics qua API SimulationCore |
-| Leaderboard gian lận | Backend chạy headless simulation, lưu version + seed + IR, từ chối nếu không khớp |
-| Blockly sinh code quá tự do | Sinh IR thay vì JS, interpreter giới hạn instruction/tick và runtime |
-| Phạm vi phình to quá sớm | MVP chỉ tập trung SimulationCore + renderer + Blockly. Backend làm sau. |
+- [x] Robot chạy theo line trên sa bàn mẫu
+- [x] Học sinh điều khiển robot bằng Blockly
+- [x] Giá trị 5 cảm biến hiển thị theo thời gian thực (sensor bars + pattern)
+- [x] Quan sát được trajectory của robot
+- [x] Pause, reset, step, replay hoạt động
+- [x] Cùng chương trình + seed + config → kết quả giống nhau (128 tests deterministic)
+- [x] SimulationCore chạy độc lập khỏi UI (zero DOM dependencies, 128 unit tests)
+- [ ] Deploy lên public URL (vercel.json ready, chờ Vercel account)

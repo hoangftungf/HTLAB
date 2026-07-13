@@ -53,6 +53,138 @@ LOOP_END          = 12  // tham số: không có — kết thúc block lặp, nh
 END_PROGRAM       = 13  // tham số: không có — dừng thực thi
 ```
 
+### IR v2 extension (C-009)
+
+IR v1 remains valid and loadable:
+
+```typescript
+interface IRProgramV1 {
+  version: 1;
+  commands: IRCommand[];
+}
+```
+
+IR v2 is additive. Generators may emit v2 once a block needs strings, colors, enum fields, nested value expressions, boolean expressions, diagnostics, metadata, or C-code payloads. The current interpreter may keep consuming v1 while later cards add v2 execution adapters.
+
+```typescript
+type IRRuntimeStatus =
+  | "implemented"
+  | "telemetry-only"
+  | "stub"
+  | "blocked-by-sandbox";
+
+type IRDiagnosticSeverity = "info" | "warning" | "error";
+type IRPrimitive = string | number | boolean | null;
+
+interface IRSourceRef {
+  blockId?: string;
+  blockType: string;
+  category?: string;
+  label?: string;
+}
+
+interface IRDiagnostic {
+  code: string;
+  severity: IRDiagnosticSeverity;
+  message: string;
+  source?: IRSourceRef;
+  runtimeStatus?: IRRuntimeStatus;
+  handlerId?: string;
+}
+
+interface IRCCodeSandboxPolicy {
+  required: true;
+  status: "available" | "blocked";
+  timeoutMs: number;
+  memoryMb: number;
+  allowedApis: string[];
+}
+
+interface IRCCodePayload {
+  language: "c";
+  source: string;
+  entryPoint?: string;
+  sandbox: IRCCodeSandboxPolicy;
+}
+
+type IRValueExpression =
+  | { kind: "literal"; value: IRPrimitive }
+  | { kind: "variable"; name: string }
+  | { kind: "sensor"; sensor: string; port?: string | number; channel?: number }
+  | { kind: "unary"; op: string; arg: IRValueExpression; angleUnit?: "degree" | "radian" }
+  | { kind: "binary"; op: string; left: IRValueExpression; right: IRValueExpression }
+  | { kind: "call"; callee: string; args: IRValueExpression[] }
+  | { kind: "c-code"; payload: IRCCodePayload };
+
+type IRBooleanExpression =
+  | { kind: "literal"; value: boolean }
+  | { kind: "compare"; op: "EQ" | "NEQ" | "LT" | "LTE" | "GT" | "GTE"; left: IRValueExpression; right: IRValueExpression }
+  | { kind: "and"; args: IRBooleanExpression[] }
+  | { kind: "or"; args: IRBooleanExpression[] }
+  | { kind: "not"; arg: IRBooleanExpression }
+  | { kind: "sensor"; sensor: string; port?: string | number; channel?: number; predicate: string };
+
+type IRFieldValue = IRPrimitive | IRValueExpression | IRBooleanExpression | IRCCodePayload;
+
+interface IRCommandV2 {
+  kind: "command";
+  op: string;
+  args: Record<string, IRFieldValue>;
+  children?: Record<string, IRNode[]>;
+  source?: IRSourceRef;
+  diagnostics?: IRDiagnostic[];
+  metadata: {
+    sourceText?: string;
+    runtimeStatus: IRRuntimeStatus;
+    handlerId: string;
+    cCode?: IRCCodePayload;
+  };
+}
+
+interface IRDiagnosticNode {
+  kind: "diagnostic";
+  diagnostic: IRDiagnostic;
+  source?: IRSourceRef;
+}
+
+type IRNode = IRCommandV2 | IRDiagnosticNode;
+
+interface IRProgramV2 {
+  version: 2;
+  nodes: IRNode[];
+  diagnostics: IRDiagnostic[];
+  metadata: {
+    generator: string;
+    generatedAt?: string;
+    source: "blockly" | "import" | "sample" | "test";
+    compatibility: {
+      acceptsV1: true;
+      migrationNotes: string[];
+    };
+  };
+  legacyV1?: {
+    commands: IRCommand[];
+    note: string;
+  };
+}
+```
+
+Runtime-status contract:
+
+- `implemented`: the interpreter or a runtime adapter must execute the block behavior.
+- `telemetry-only`: the runtime records a telemetry/effect event but does not change robot physics.
+- `stub`: the generator/runtime must emit an `IRDiagnostic`; it must not silently drop the block.
+- `blocked-by-sandbox`: the block is security-sensitive and cannot execute until a sandbox policy is available.
+
+Compatibility and migration:
+
+- Existing `version: 1` programs remain the stable interpreter input. No existing sample or saved v1 program needs migration before it can run.
+- A v2-capable generator may include `legacyV1.commands` when the program can be lowered losslessly to v1 opcodes.
+- If a block cannot be lowered to v1, the v2 program must carry a diagnostic node with the source block type, handler id, and runtime status.
+- Intentional compatibility stubs are `patrol_start_button`, `light_reading_1`, and `sensor_remote_control_button`.
+- Math trig/inverse-trig nodes must include `angleUnit: "degree" | "radian"`.
+- `C Code` nodes must use `IRCCodePayload`; until sandbox execution ships, their sandbox policy is `status: "blocked"` and the command emits an error diagnostic instead of running.
+
 ## Shared shapes
 
 ```typescript
