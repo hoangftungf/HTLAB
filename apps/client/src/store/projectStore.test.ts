@@ -95,6 +95,54 @@ const EXPECTED_MOTION_BLOCK_TEXT: Record<typeof EXPECTED_MOTION_TOOLBOX_TYPES[nu
   motion_restore_steering_torque: "restore steering torque",
 };
 
+const EXPECTED_SENSOR_TOOLBOX_TYPES = [
+  "sensor_touch_switch_pressed",
+  "sensor_infrared_obstacle",
+  "sensor_infrared_range_value",
+  "sensor_integrated_grayscale_detect_black",
+  "sensor_integrated_grayscale_value",
+  "sensor_single_grayscale_detect_black",
+  "sensor_single_grayscale_value",
+  "sensor_ultrasonic_distance",
+  "sensor_ambient_light_value",
+  "sensor_temperature_celsius",
+  "sensor_humidity_percent",
+  "sensor_flame_value",
+  "sensor_magnetic_detected",
+  "sensor_volume_detection",
+  "sensor_motor_encoder_value",
+  "sensor_reset_motor_encoder",
+  "sensor_current_timer_value",
+  "sensor_reset_timer",
+  "sensor_remote_control_button",
+  "sensor_color_value",
+  "sensor_color_detected",
+] as const;
+
+const EXPECTED_SENSOR_BLOCK_TEXT: Record<typeof EXPECTED_SENSOR_TOOLBOX_TYPES[number], string> = {
+  sensor_touch_switch_pressed: "touch switch 1 pressed",
+  sensor_infrared_obstacle: "infrared port 1 obstacles detected",
+  sensor_infrared_range_value: "infrared ranging sensor port 1 value",
+  sensor_integrated_grayscale_detect_black: "integrated grayscale port 5 channel 1 detected black",
+  sensor_integrated_grayscale_value: "integrated grayscale port 5 channel 1",
+  sensor_single_grayscale_detect_black: "single grayscale port 1 detected black",
+  sensor_single_grayscale_value: "single grayscale port 1 detected value",
+  sensor_ultrasonic_distance: "ultrasonic sensor port 1 detect distance cm",
+  sensor_ambient_light_value: "ambient light port 1 value",
+  sensor_temperature_celsius: "temperature sensor port 1 \u00b0C",
+  sensor_humidity_percent: "humidity sensor port 1 value %",
+  sensor_flame_value: "flame sensor port 1 value",
+  sensor_magnetic_detected: "magnetic port 1 magnetic field detected",
+  sensor_volume_detection: "volume detection port 1",
+  sensor_motor_encoder_value: "motor encoder port A",
+  sensor_reset_motor_encoder: "reset motor encoder port A",
+  sensor_current_timer_value: "current timer value",
+  sensor_reset_timer: "reset timer",
+  sensor_remote_control_button: "remote control button",
+  sensor_color_value: "Color sensor port 1",
+  sensor_color_detected: "Color sensor port 1 detected red",
+};
+
 function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem[] = []): ToolboxItem[] {
   for (const item of items) {
     if (item.kind === "block") blocks.push(item);
@@ -350,6 +398,52 @@ describe("projectStore C-013 save/load compatibility", () => {
     const steeringRotation = workspace.newBlock("motion_steering_rotation_mode");
     expect(dropdownValues(steeringAngle.getField("id"))).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
     expect(dropdownValues(steeringRotation.getField("id"))).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+  });
+
+  it("matches WhalesBot Sensor toolbox order and visible block text", () => {
+    const workspace = new Blockly.Workspace();
+    const sensorCategory = findToolboxCategory((toolbox as { contents: ToolboxItem[] }).contents, "Sensor");
+    const sensorTypes = (sensorCategory.contents ?? [])
+      .filter((item) => item.kind === "block")
+      .map((item) => item.type);
+    const registrySensorTypes = WHALESBOT_BLOCK_REGISTRY
+      .filter((entry) => entry.category === "Sensor")
+      .map((entry) => entry.type);
+
+    expect(sensorTypes).toEqual([...EXPECTED_SENSOR_TOOLBOX_TYPES]);
+    expect(sensorTypes).toEqual(registrySensorTypes);
+
+    for (const type of EXPECTED_SENSOR_TOOLBOX_TYPES) {
+      const block = workspace.newBlock(type);
+      expect(visibleBlockText(block), type).toBe(EXPECTED_SENSOR_BLOCK_TEXT[type]);
+    }
+  });
+
+  it("matches WhalesBot Sensor dropdown and output shapes", () => {
+    const workspace = new Blockly.Workspace();
+
+    const integratedBlack = workspace.newBlock("sensor_integrated_grayscale_detect_black");
+    expect(integratedBlack.outputConnection?.getCheck()).toEqual(["Boolean"]);
+    expect(integratedBlack.getFieldValue("port")).toBe("5");
+    expect(dropdownValues(integratedBlack.getField("channel"))).toEqual(["1", "2", "3", "4", "5"]);
+    expect(dropdownValues(integratedBlack.getField("color"))).toEqual(["black", "white"]);
+
+    const range = workspace.newBlock("sensor_infrared_range_value");
+    expect(range.outputConnection?.getCheck()).toEqual(["Number"]);
+    expect(dropdownValues(range.getField("port"))).toEqual(["1", "2", "3", "4", "5"]);
+
+    const remote = workspace.newBlock("sensor_remote_control_button");
+    expect(remote.outputConnection).not.toBeNull();
+    expect(remote.getField("button")).toBeNull();
+
+    const resetEncoder = workspace.newBlock("sensor_reset_motor_encoder");
+    expect(resetEncoder.outputConnection).toBeNull();
+    expect(resetEncoder.previousConnection).not.toBeNull();
+    expect(resetEncoder.nextConnection).not.toBeNull();
+
+    const colorDetected = workspace.newBlock("sensor_color_detected");
+    expect(colorDetected.outputConnection?.getCheck()).toEqual(["Boolean"]);
+    expect(dropdownValues(colorDetected.getField("color"))).toEqual(["red", "green", "blue", "yellow", "white", "black"]);
   });
 
   it("keeps toolbox input and field names aligned with block definitions", () => {

@@ -75,6 +75,7 @@ const DIRECTIONS = ["Forward", "Backward"] as const;
 const TURN_DIRECTIONS = ["Turn left", "Turn right"] as const;
 const BRANCHES = ["left", "middle", "right", "T/Cross intersection"] as const;
 const COMPARE_OPS = ["<", ">", "=", "!=", "<=", ">="] as const;
+const GRAYSCALE_DETECTED_VALUES = ["black", "white"] as const;
 const ANGLE_UNITS = ["degree", "radian"] as const;
 const MATH_UNARY_OPS = [
   "abs",
@@ -1146,7 +1147,8 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     kind: "boolean",
     fields: [
       field("port", "dropdown", "5", { values: PORTS }),
-      field("channel", "number", 1, { min: 1, max: 5 }),
+      field("channel", "dropdown", "1", { values: PORTS }),
+      field("color", "dropdown", "black", { values: GRAYSCALE_DETECTED_VALUES }),
     ],
     runtimeStatus: "implemented",
     generatorHandlerId: "sensor.integratedGrayscaleDetectBlack",
@@ -1160,7 +1162,7 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     kind: "reporter-number",
     fields: [
       field("port", "dropdown", "5", { values: PORTS }),
-      field("channel", "number", 1, { min: 1, max: 5 }),
+      field("channel", "dropdown", "1", { values: PORTS }),
     ],
     runtimeStatus: "implemented",
     generatorHandlerId: "sensor.integratedGrayscaleValue",
@@ -1172,7 +1174,10 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     category: "Sensor",
     displayText: "single grayscale port 1 detected black",
     kind: "boolean",
-    fields: [field("port", "dropdown", "1", { values: PORTS })],
+    fields: [
+      field("port", "dropdown", "1", { values: PORTS }),
+      field("color", "dropdown", "black", { values: GRAYSCALE_DETECTED_VALUES }),
+    ],
     runtimeStatus: "implemented",
     generatorHandlerId: "sensor.singleGrayscaleDetectBlack",
     runtimeHandlerId: "runtime.sensor.singleGrayscaleDetectBlack",
@@ -1314,8 +1319,8 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     type: "sensor_remote_control_button",
     category: "Sensor",
     displayText: "remote control button",
-    kind: "boolean",
-    fields: [field("button", "dropdown", "A", { values: ["A", "B", "C", "D", "up", "down", "left", "right"] })],
+    kind: "reporter",
+    fields: noFields,
     runtimeStatus: "stub",
     generatorHandlerId: "compat.remoteControlButton",
     runtimeHandlerId: "runtime.diagnostic.intentionalFalse",

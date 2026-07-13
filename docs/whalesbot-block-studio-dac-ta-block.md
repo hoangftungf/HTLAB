@@ -896,7 +896,7 @@ Các block đã xác nhận từ `sensor_1.png` và `sensor_2.png`:
 | `reset motor encoder port A` | `statement` | Đặt lại encoder motor về mốc ban đầu |
 | `current timer value` | `reporter number` | Trả giá trị bộ đếm thời gian hiện tại |
 | `reset timer` | `statement` | Đặt lại bộ đếm thời gian |
-| `remote control button` | `boolean`/stub | Không quan trọng cho mô phỏng hiện tại; giữ block để workspace tương thích, mặc định trả `false` và ghi comment/diagnostic |
+| `remote control button` | `reporter`/stub | Không quan trọng cho mô phỏng hiện tại; giữ block để workspace tương thích và ghi comment/diagnostic |
 | `Color sensor port 1` | `reporter` | Trả giá trị/mã màu từ cảm biến màu |
 | `Color sensor port 1 detected red` | `boolean` | Đúng khi cảm biến màu phát hiện màu đã chọn, ví dụ `red` |
 
@@ -976,7 +976,7 @@ Các câu hỏi chính ở bản trước đã được trả lời và được
 | --- | --- |
 | `start button` trong nhóm `Patrol line` | Có thể để trống logic trong phạm vi hiện tại. Khi triển khai, giữ block để tương thích UI nhưng runtime no-op và ghi diagnostic/comment. |
 | `reading 1` trong nhóm `Light Speaker` | Không quan trọng cho mô phỏng hiện tại. Giữ block dạng stub, có comment/diagnostic rõ ràng. |
-| `remote control button` trong nhóm `Sensor` | Không quan trọng cho mô phỏng hiện tại. Giữ block dạng stub, mặc định trả `false` hoặc no-op tùy ngữ cảnh, có comment/diagnostic. |
+| `remote control button` trong nhóm `Sensor` | Không quan trọng cho mô phỏng hiện tại. Giữ block dạng reporter stub theo ảnh, mặc định chỉ ghi diagnostic/comment khi được dùng. |
 | Lượng giác trong `Math` | Hỗ trợ cả hai chế độ `degree` và `radian`; UI/generator phải ghi rõ đơn vị đang dùng. |
 | `C Code` | Mục tiêu là thực thi C thật. Không coi đây chỉ là metadata; cần sandbox và API phần cứng giới hạn trước khi bật chạy. |
 

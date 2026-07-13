@@ -56,13 +56,6 @@ export const toolbox: any = {
       name: "Sensor",
       colour: "#8b5cf6",
       contents: [
-        block("read_sensor_road"),
-        block("sensor_group_detected"),
-        block("line_position"),
-        block("value_sensor_road"),
-        block("value_line_position"),
-        block("logic_sensor_group"),
-        block("remote_control_button"),
         block("sensor_touch_switch_pressed"),
         block("sensor_infrared_obstacle"),
         block("sensor_infrared_range_value"),

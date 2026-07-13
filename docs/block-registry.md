@@ -124,13 +124,13 @@ blocks, C Code disabled behavior, and a mixed-category QA workspace.
 | Sensor | `sensor_touch_switch_pressed` | `touch switch 1 pressed` | boolean | stub | `port=1` |
 | Sensor | `sensor_infrared_obstacle` | `infrared port 1 obstacles detected` | boolean | stub | `port=1` |
 | Sensor | `sensor_infrared_range_value` | `infrared ranging sensor port 1 value` | reporter-number | stub | `port=1` |
-| Sensor | `sensor_integrated_grayscale_detect_black` | `integrated grayscale port 5 channel 1 detected black` | boolean | implemented | `port=5`, `channel=1` |
+| Sensor | `sensor_integrated_grayscale_detect_black` | `integrated grayscale port 5 channel 1 detected black` | boolean | implemented | `port=5`, `channel=1`, `color=black/white` |
 | Sensor | `sensor_integrated_grayscale_value` | `integrated grayscale port 5 channel 1` | reporter-number | implemented | `port=5`, `channel=1` |
-| Sensor | `sensor_single_grayscale_detect_black` | `single grayscale port 1 detected black` | boolean | stub | `port=1` |
+| Sensor | `sensor_single_grayscale_detect_black` | `single grayscale port 1 detected black` | boolean | stub | `port=1`, `color=black/white` |
 | Sensor | `sensor_single_grayscale_value` | `single grayscale port 1 detected value` | reporter-number | stub | `port=1` |
 | Sensor | `sensor_ultrasonic_distance` | `ultrasonic sensor port 1 detect distance cm` | reporter-number | stub | `port=1` |
 | Sensor | `sensor_ambient_light_value` | `ambient light port 1 value` | reporter-number | stub | `port=1` |
-| Sensor | `sensor_temperature_celsius` | `temperature sensor port 1 degC` | reporter-number | stub | `port=1` |
+| Sensor | `sensor_temperature_celsius` | `temperature sensor port 1 °C` | reporter-number | stub | `port=1` |
 | Sensor | `sensor_humidity_percent` | `humidity sensor port 1 value %` | reporter-number | stub | `port=1` |
 | Sensor | `sensor_flame_value` | `flame sensor port 1 value` | reporter-number | stub | `port=1` |
 | Sensor | `sensor_magnetic_detected` | `magnetic port 1 magnetic field detected` | boolean | stub | `port=1` |
@@ -139,7 +139,7 @@ blocks, C Code disabled behavior, and a mixed-category QA workspace.
 | Sensor | `sensor_reset_motor_encoder` | `reset motor encoder port A` | statement | stub | `motor=A` |
 | Sensor | `sensor_current_timer_value` | `current timer value` | reporter-number | stub | none |
 | Sensor | `sensor_reset_timer` | `reset timer` | statement | stub | none |
-| Sensor | `sensor_remote_control_button` | `remote control button` | boolean | stub | `button=A/up/down/left/right` |
+| Sensor | `sensor_remote_control_button` | `remote control button` | reporter | stub | none |
 | Sensor | `sensor_color_value` | `Color sensor port 1` | reporter | stub | `port=1` |
 | Sensor | `sensor_color_detected` | `Color sensor port 1 detected red` | boolean | stub | `port=1`, `color=red` |
 | AI | `ai_image_recognition` | `image recognition port 1` | reporter | stub | `port=1` |

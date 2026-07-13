@@ -1100,7 +1100,7 @@ function booleanFromBlock(block: Blockly.Block): IRBooleanExpressionLocal {
         sensor: "integrated-grayscale",
         port: fieldText(block, "port", "5"),
         channel: fieldNumber(block, "channel", 1),
-        predicate: "black",
+        predicate: fieldText(block, "color", "black"),
       };
 
     case "sensor_single_grayscale_detect_black":
@@ -1108,7 +1108,7 @@ function booleanFromBlock(block: Blockly.Block): IRBooleanExpressionLocal {
         kind: "sensor",
         sensor: "single-grayscale",
         port: fieldText(block, "port", "1"),
-        predicate: "black",
+        predicate: fieldText(block, "color", "black"),
       };
 
     case "sensor_touch_switch_pressed":
