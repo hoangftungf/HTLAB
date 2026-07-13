@@ -146,8 +146,8 @@ html, body, #root {
   fill: #ffffff;
   stroke: rgba(15, 23, 42, 0.18);
   stroke-width: 1px;
-  rx: 8px;
-  ry: 8px;
+  rx: 16px;
+  ry: 16px;
 }
 
 .blockly-workspace-container .htlab-field-number .blocklyText {
