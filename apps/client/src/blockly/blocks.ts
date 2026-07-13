@@ -317,3 +317,452 @@ Blockly.Blocks["set_var"] = {
     });
   },
 };
+
+// ---- C-010 value/control-flow foundation ----
+
+Blockly.Blocks["motion_set_motors_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_set_motors_v2",
+      message0: "Set motors L %1 R %2",
+      args0: [
+        { type: "input_value", name: "LEFT", check: "Number" },
+        { type: "input_value", name: "RIGHT", check: "Number" },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Set left and right motor power from value expressions",
+    });
+  },
+};
+
+Blockly.Blocks["motion_set_motors_for_time_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_set_motors_for_time_v2",
+      message0: "Set motors L %1 R %2 for %3 sec",
+      args0: [
+        { type: "input_value", name: "LEFT", check: "Number" },
+        { type: "input_value", name: "RIGHT", check: "Number" },
+        { type: "input_value", name: "SECONDS", check: "Number" },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Set motors for a duration computed from a value expression",
+    });
+  },
+};
+
+Blockly.Blocks["value_number"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "value_number",
+      message0: "%1",
+      args0: [{ type: "field_number", name: "NUM", value: 0 }],
+      colour: 45,
+      output: "Number",
+      tooltip: "Number value",
+    });
+  },
+};
+
+Blockly.Blocks["value_variable"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "value_variable",
+      message0: "var %1",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "VAR",
+          options: [["v0", "v0"], ["v1", "v1"], ["v2", "v2"], ["v3", "v3"], ["v4", "v4"], ["v5", "v5"], ["v6", "v6"], ["v7", "v7"]],
+        },
+      ],
+      colour: 330,
+      output: "Number",
+      tooltip: "Read a numeric variable",
+    });
+  },
+};
+
+Blockly.Blocks["set_var_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "set_var_v2",
+      message0: "Set var %1 = %2",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "VAR",
+          options: [["v0", "v0"], ["v1", "v1"], ["v2", "v2"], ["v3", "v3"], ["v4", "v4"], ["v5", "v5"], ["v6", "v6"], ["v7", "v7"]],
+        },
+        { type: "input_value", name: "VALUE", check: "Number" },
+      ],
+      colour: 330,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Set a variable from a value expression",
+    });
+  },
+};
+
+Blockly.Blocks["value_sensor_road"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "value_sensor_road",
+      message0: "Road sensor %1",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "ROAD",
+          options: [["1 (left)", "1"], ["2", "2"], ["3 (center)", "3"], ["4", "4"], ["5 (right)", "5"]],
+        },
+      ],
+      colour: 290,
+      output: "Number",
+      tooltip: "Read a grayscale sensor as a numeric value",
+    });
+  },
+};
+
+Blockly.Blocks["value_line_position"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "value_line_position",
+      message0: "Line position",
+      colour: 290,
+      output: "Number",
+      tooltip: "Read the current line position",
+    });
+  },
+};
+
+Blockly.Blocks["math_binary"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_binary",
+      message0: "%1 %2 %3",
+      args0: [
+        { type: "input_value", name: "A", check: "Number" },
+        {
+          type: "field_dropdown",
+          name: "OP",
+          options: [["+", "ADD"], ["-", "MINUS"], ["x", "MULTIPLY"], ["/", "DIVIDE"], ["^", "POWER"]],
+        },
+        { type: "input_value", name: "B", check: "Number" },
+      ],
+      colour: 45,
+      output: "Number",
+      tooltip: "Combine two numeric value expressions",
+    });
+  },
+};
+
+Blockly.Blocks["math_remainder"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_remainder",
+      message0: "remainder %1 / %2",
+      args0: [
+        { type: "input_value", name: "A", check: "Number" },
+        { type: "input_value", name: "B", check: "Number" },
+      ],
+      colour: 45,
+      output: "Number",
+      tooltip: "Remainder after division",
+    });
+  },
+};
+
+Blockly.Blocks["math_unary"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_unary",
+      message0: "%1 %2 angle %3",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "OP",
+          options: [["abs", "ABS"], ["sqrt", "SQRT"], ["ln", "LN"], ["log10", "LOG10"], ["round", "ROUND"], ["floor", "FLOOR"], ["ceiling", "CEILING"], ["sin", "SIN"], ["cos", "COS"], ["tan", "TAN"], ["asin", "ASIN"], ["acos", "ACOS"], ["atan", "ATAN"]],
+        },
+        { type: "input_value", name: "ARG", check: "Number" },
+        {
+          type: "field_dropdown",
+          name: "ANGLE_UNIT",
+          options: [["degrees", "degree"], ["radians", "radian"]],
+        },
+      ],
+      colour: 45,
+      output: "Number",
+      tooltip: "Apply a numeric function",
+    });
+  },
+};
+
+Blockly.Blocks["math_random_range"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_random_range",
+      message0: "random %1 to %2",
+      args0: [
+        { type: "input_value", name: "MIN", check: "Number" },
+        { type: "input_value", name: "MAX", check: "Number" },
+      ],
+      colour: 45,
+      output: "Number",
+      tooltip: "Deterministic random integer in range",
+    });
+  },
+};
+
+Blockly.Blocks["logic_literal_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "logic_literal_v2",
+      message0: "%1",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "BOOL",
+          options: [["true", "TRUE"], ["false", "FALSE"]],
+        },
+      ],
+      colour: 210,
+      output: "Boolean",
+      tooltip: "Boolean value",
+    });
+  },
+};
+
+Blockly.Blocks["logic_compare_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "logic_compare_v2",
+      message0: "%1 %2 %3",
+      args0: [
+        { type: "input_value", name: "A", check: "Number" },
+        {
+          type: "field_dropdown",
+          name: "OP",
+          options: [[">", "GT"], ["<", "LT"], [">=", "GTE"], ["<=", "LTE"], ["=", "EQ"], ["!=", "NEQ"]],
+        },
+        { type: "input_value", name: "B", check: "Number" },
+      ],
+      colour: 210,
+      output: "Boolean",
+      tooltip: "Compare two value expressions",
+    });
+  },
+};
+
+Blockly.Blocks["logic_operation_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "logic_operation_v2",
+      message0: "%1 %2 %3",
+      args0: [
+        { type: "input_value", name: "A", check: "Boolean" },
+        {
+          type: "field_dropdown",
+          name: "OP",
+          options: [["and", "AND"], ["or", "OR"]],
+        },
+        { type: "input_value", name: "B", check: "Boolean" },
+      ],
+      colour: 210,
+      output: "Boolean",
+      tooltip: "Combine boolean expressions",
+    });
+  },
+};
+
+Blockly.Blocks["logic_not_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "logic_not_v2",
+      message0: "not %1",
+      args0: [{ type: "input_value", name: "BOOL", check: "Boolean" }],
+      colour: 210,
+      output: "Boolean",
+      tooltip: "Invert a boolean expression",
+    });
+  },
+};
+
+Blockly.Blocks["logic_sensor_group"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "logic_sensor_group",
+      message0: "Group %1 detects line?",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "GROUP",
+          options: [["left", "0"], ["middle", "1"], ["right", "2"]],
+        },
+      ],
+      colour: 290,
+      output: "Boolean",
+      tooltip: "Check a grayscale sensor group",
+    });
+  },
+};
+
+Blockly.Blocks["remote_control_button"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "remote_control_button",
+      message0: "Remote button %1 pressed?",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "BUTTON",
+          options: [["A", "A"], ["B", "B"], ["C", "C"], ["D", "D"]],
+        },
+      ],
+      colour: 290,
+      output: "Boolean",
+      tooltip: "Remote control compatibility stub; returns false in simulation",
+    });
+  },
+};
+
+Blockly.Blocks["control_if_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "control_if_v2",
+      message0: "If %1",
+      args0: [{ type: "input_value", name: "COND", check: "Boolean" }],
+      message1: "do %1",
+      args1: [{ type: "input_statement", name: "THEN" }],
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Run blocks when a boolean expression is true",
+    });
+  },
+};
+
+Blockly.Blocks["control_if_else_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "control_if_else_v2",
+      message0: "If %1",
+      args0: [{ type: "input_value", name: "COND", check: "Boolean" }],
+      message1: "do %1",
+      args1: [{ type: "input_statement", name: "THEN" }],
+      message2: "else %1",
+      args2: [{ type: "input_statement", name: "ELSE" }],
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Run one of two branches",
+    });
+  },
+};
+
+Blockly.Blocks["control_repeat_times_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "control_repeat_times_v2",
+      message0: "Repeat %1 times",
+      args0: [{ type: "input_value", name: "TIMES", check: "Number" }],
+      message1: "do %1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Repeat blocks a computed number of times",
+    });
+  },
+};
+
+Blockly.Blocks["control_repeat_forever"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "control_repeat_forever",
+      message0: "Repeat forever",
+      message1: "do %1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Repeat until the interpreter loop guard stops the program",
+    });
+  },
+};
+
+Blockly.Blocks["control_repeat_until"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "control_repeat_until",
+      message0: "Repeat until %1",
+      args0: [{ type: "input_value", name: "COND", check: "Boolean" }],
+      message1: "do %1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Repeat blocks until a boolean expression is true",
+    });
+  },
+};
+
+Blockly.Blocks["wait_seconds_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "wait_seconds_v2",
+      message0: "Wait %1 sec",
+      args0: [{ type: "input_value", name: "SECONDS", check: "Number" }],
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Wait for a computed duration",
+    });
+  },
+};
+
+Blockly.Blocks["control_wait_until"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "control_wait_until",
+      message0: "Wait until %1 timeout ticks %2",
+      args0: [
+        { type: "input_value", name: "COND", check: "Boolean" },
+        { type: "input_value", name: "TIMEOUT", check: "Number" },
+      ],
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Wait until a boolean expression becomes true or times out",
+    });
+  },
+};
+
+Blockly.Blocks["control_break"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "control_break",
+      message0: "Break loop",
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Exit the nearest running loop",
+    });
+  },
+};
+
+Blockly.Blocks["control_return"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "control_return",
+      message0: "Return",
+      colour: 210,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Stop program execution",
+    });
+  },
+};

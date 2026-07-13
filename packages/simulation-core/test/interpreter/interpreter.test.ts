@@ -8,6 +8,7 @@ import {
   type IRProgram,
   type Simulation,
 } from "../../src/index.js";
+import type { IRProgramV2 } from "../../src/interpreter/types.js";
 import { DEFAULT_ROBOT_CONFIG, type RobotState } from "../../src/types.js";
 
 // ---- Hàm hỗ trợ ----
@@ -71,6 +72,23 @@ function makeProgram(ops: Array<{ op: OpCode; args?: number[]; label?: string }>
   };
 }
 
+function makeV2Program(nodes: IRProgramV2["nodes"], diagnostics: IRProgramV2["diagnostics"] = []): IRProgramV2 {
+  return {
+    version: 2,
+    commands: [],
+    nodes,
+    diagnostics,
+    metadata: {
+      generator: "test",
+      source: "test",
+      compatibility: {
+        acceptsV1: true,
+        migrationNotes: ["Test fixture for IR v2 control-flow foundation."],
+      },
+    },
+  };
+}
+
 function runTicks(interp: ReturnType<typeof createInterpreter>, sim: Simulation, n: number): void {
   for (let i = 0; i < n; i++) {
     interp.step();
@@ -79,6 +97,449 @@ function runTicks(interp: ReturnType<typeof createInterpreter>, sim: Simulation,
 }
 
 // ---- Kiểm thử ----
+
+describe("IR contract versions", () => {
+  it("keeps existing v1 programs loadable by the interpreter", () => {
+    const sim = makeSim();
+    const prog = makeProgram([
+      { op: OpCode.SET_MOTOR, args: [0.25, 0.25] },
+      { op: OpCode.END_PROGRAM },
+    ]);
+    const interp = createInterpreter(prog, sim);
+
+    interp.step();
+    sim.tick();
+
+    expect(interp.done).toBe(true);
+    expect(sim.getTelemetry()[0].motorTargets.left).toBe(0.25);
+  });
+
+  it("represents v2 command, value, boolean, diagnostic, and C-code metadata payloads", () => {
+    const program = {
+      version: 2,
+      commands: [],
+      nodes: [
+        {
+          kind: "command",
+          op: "motion.setMotorPair",
+          args: {
+            left: { kind: "literal", value: 0.4 },
+            right: { kind: "literal", value: 0.4 },
+            label: "forward",
+          },
+          source: {
+            blockType: "motion_tank_drive_continuous",
+            category: "Motion",
+          },
+          metadata: {
+            runtimeStatus: "implemented",
+            handlerId: "runtime.motor.setPair",
+          },
+        },
+        {
+          kind: "command",
+          op: "control.if",
+          args: {
+            condition: {
+              kind: "compare",
+              op: "GT",
+              left: { kind: "sensor", sensor: "integrated-grayscale", port: 5, channel: 3 },
+              right: { kind: "literal", value: 50 },
+            },
+          },
+          children: {
+            then: [
+              {
+                kind: "command",
+                op: "motion.stopMotor",
+                args: { motor: "all" },
+                metadata: {
+                  runtimeStatus: "implemented",
+                  handlerId: "runtime.motor.stop",
+                },
+              },
+            ],
+          },
+          metadata: {
+            runtimeStatus: "stub",
+            handlerId: "runtime.diagnostic.booleanFlowNotImplemented",
+          },
+        },
+        {
+          kind: "diagnostic",
+          diagnostic: {
+            code: "WB_STUB_REMOTE_CONTROL",
+            severity: "warning",
+            message: "Remote control input is an intentional compatibility stub.",
+            runtimeStatus: "stub",
+            handlerId: "runtime.diagnostic.intentionalFalse",
+            source: {
+              blockType: "sensor_remote_control_button",
+              category: "Sensor",
+            },
+          },
+        },
+        {
+          kind: "command",
+          op: "cCode.function",
+          args: {
+            body: {
+              language: "c",
+              source: "void _fn(int _number1) { return; }",
+              entryPoint: "_fn",
+              sandbox: {
+                required: true,
+                status: "blocked",
+                timeoutMs: 100,
+                memoryMb: 16,
+                allowedApis: [],
+              },
+            },
+          },
+          metadata: {
+            runtimeStatus: "blocked-by-sandbox",
+            handlerId: "runtime.diagnostic.cSandboxRequired",
+            cCode: {
+              language: "c",
+              source: "void _fn(int _number1) { return; }",
+              entryPoint: "_fn",
+              sandbox: {
+                required: true,
+                status: "blocked",
+                timeoutMs: 100,
+                memoryMb: 16,
+                allowedApis: [],
+              },
+            },
+          },
+        },
+      ],
+      diagnostics: [
+        {
+          code: "WB_UNSUPPORTED_STUB",
+          severity: "warning",
+          message: "Stub blocks are preserved with diagnostics.",
+          runtimeStatus: "stub",
+          handlerId: "runtime.diagnostic.intentionalNoop",
+        },
+      ],
+      metadata: {
+        generator: "htlab-blockly",
+        source: "test",
+        compatibility: {
+          acceptsV1: true,
+          migrationNotes: ["IR v1 commands remain accepted while v2 adapters roll out."],
+        },
+      },
+      legacyV1: {
+        commands: [{ op: OpCode.SET_MOTOR, args: [0.4, 0.4] }],
+        note: "Lossy v1 lowering is optional and documented.",
+      },
+    } satisfies IRProgramV2;
+
+    expect(program.version).toBe(2);
+    expect(program.nodes).toHaveLength(4);
+    expect(program.nodes[2].kind).toBe("diagnostic");
+    expect(program.metadata.compatibility.acceptsV1).toBe(true);
+  });
+});
+
+describe("IR v2 interpreter", () => {
+  it("executes nested expressions, if/else, repeat-until, and wait-until", () => {
+    const sim = makeSim();
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "variable.set",
+        args: {
+          name: "v0",
+          value: { kind: "literal", value: 1 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.variable.set" },
+      },
+      {
+        kind: "command",
+        op: "control.ifElse",
+        args: {
+          condition: {
+            kind: "and",
+            args: [
+              {
+                kind: "compare",
+                op: "EQ",
+                left: {
+                  kind: "binary",
+                  op: "+",
+                  left: { kind: "literal", value: 2 },
+                  right: {
+                    kind: "binary",
+                    op: "%",
+                    left: { kind: "literal", value: 5 },
+                    right: { kind: "literal", value: 2 },
+                  },
+                },
+                right: { kind: "literal", value: 3 },
+              },
+              {
+                kind: "not",
+                arg: {
+                  kind: "sensor",
+                  sensor: "remote-control",
+                  port: "A",
+                  predicate: "pressed",
+                },
+              },
+            ],
+          },
+        },
+        children: {
+          then: [
+            {
+              kind: "command",
+              op: "motion.setMotorPair",
+              args: {
+                left: {
+                  kind: "unary",
+                  op: "sin",
+                  arg: { kind: "literal", value: 90 },
+                  angleUnit: "degree",
+                },
+                right: {
+                  kind: "binary",
+                  op: "/",
+                  left: { kind: "literal", value: 1 },
+                  right: { kind: "literal", value: 2 },
+                },
+              },
+              metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.setPair" },
+            },
+          ],
+          else: [
+            {
+              kind: "command",
+              op: "motion.setMotorPair",
+              args: {
+                left: { kind: "literal", value: 0 },
+                right: { kind: "literal", value: 0 },
+              },
+              metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.setPair" },
+            },
+          ],
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.control.ifElse" },
+      },
+      {
+        kind: "command",
+        op: "control.repeatUntil",
+        args: {
+          condition: {
+            kind: "compare",
+            op: "GTE",
+            left: { kind: "variable", name: "v0" },
+            right: { kind: "literal", value: 3 },
+          },
+        },
+        children: {
+          do: [
+            {
+              kind: "command",
+              op: "variable.set",
+              args: {
+                name: "v0",
+                value: {
+                  kind: "binary",
+                  op: "+",
+                  left: { kind: "variable", name: "v0" },
+                  right: { kind: "literal", value: 1 },
+                },
+              },
+              metadata: { runtimeStatus: "implemented", handlerId: "runtime.variable.set" },
+            },
+          ],
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.control.repeatUntil" },
+      },
+      {
+        kind: "command",
+        op: "control.waitUntil",
+        args: {
+          condition: {
+            kind: "compare",
+            op: "GTE",
+            left: { kind: "sensor", sensor: "timer" },
+            right: { kind: "literal", value: 2 },
+          },
+          timeoutTicks: { kind: "literal", value: 10 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.control.waitUntil" },
+      },
+      {
+        kind: "command",
+        op: "control.return",
+        args: {},
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.control.return" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim);
+
+    runTicks(interp, sim, 8);
+
+    expect(interp.done).toBe(true);
+    expect(sim.getTelemetry()[0].motorTargets.left).toBeCloseTo(1, 5);
+    expect(sim.getTelemetry()[0].motorTargets.right).toBeCloseTo(0.5, 5);
+    expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_REMOTE_STUB")).toBe(true);
+  });
+
+  it("stops repeat-forever on the configured loop cap", () => {
+    const sim = makeSim();
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "control.repeatForever",
+        args: {},
+        children: {
+          do: [
+            {
+              kind: "command",
+              op: "variable.set",
+              args: {
+                name: "v0",
+                value: {
+                  kind: "binary",
+                  op: "+",
+                  left: { kind: "variable", name: "v0" },
+                  right: { kind: "literal", value: 1 },
+                },
+              },
+              metadata: { runtimeStatus: "implemented", handlerId: "runtime.variable.set" },
+            },
+          ],
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.control.repeatForever" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim, { maxLoopIterations: 3 });
+
+    interp.step();
+
+    expect(interp.done).toBe(true);
+    expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_LOOP_CAP")).toBe(true);
+  });
+
+  it("stops wait-until on timeout", () => {
+    const sim = makeSim();
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "control.waitUntil",
+        args: {
+          condition: { kind: "literal", value: false },
+          timeoutTicks: { kind: "literal", value: 2 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.control.waitUntil" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim);
+
+    runTicks(interp, sim, 5);
+
+    expect(interp.done).toBe(true);
+    expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_WAIT_UNTIL_TIMEOUT")).toBe(true);
+  });
+
+  it("evaluates trig functions in degrees and radians", () => {
+    const sim = makeSim();
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "motion.setMotorPair",
+        args: {
+          left: {
+            kind: "unary",
+            op: "sin",
+            arg: { kind: "literal", value: 90 },
+            angleUnit: "degree",
+          },
+          right: {
+            kind: "unary",
+            op: "sin",
+            arg: { kind: "literal", value: Math.PI / 2 },
+            angleUnit: "radian",
+          },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.setPair" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim);
+
+    interp.step();
+    sim.tick();
+
+    expect(sim.getTelemetry()[0].motorTargets.left).toBeCloseTo(1, 5);
+    expect(sim.getTelemetry()[0].motorTargets.right).toBeCloseTo(1, 5);
+  });
+
+  it("uses deterministic seeded random expressions", () => {
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "motion.setMotorPair",
+        args: {
+          left: {
+            kind: "call",
+            callee: "randomRange",
+            args: [{ kind: "literal", value: 1 }, { kind: "literal", value: 5 }],
+          },
+          right: {
+            kind: "call",
+            callee: "randomRange",
+            args: [{ kind: "literal", value: 1 }, { kind: "literal", value: 5 }],
+          },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.setPair" },
+      },
+    ]);
+    const simA = makeSim();
+    const simB = makeSim();
+    const interpA = createInterpreter(program, simA, { randomSeed: 123 });
+    const interpB = createInterpreter(program, simB, { randomSeed: 123 });
+
+    interpA.step();
+    simA.tick();
+    interpB.step();
+    simB.tick();
+
+    expect(simA.getTelemetry()[0].motorTargets.left).toBe(simB.getTelemetry()[0].motorTargets.left);
+    expect(simA.getTelemetry()[0].motorTargets.right).toBe(simB.getTelemetry()[0].motorTargets.right);
+    expect(simA.getTelemetry()[0].motorTargets.left).toBeGreaterThanOrEqual(1);
+  });
+
+  it("emits diagnostics for invalid math domains", () => {
+    const sim = makeSim();
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "motion.setMotorPair",
+        args: {
+          left: {
+            kind: "unary",
+            op: "sqrt",
+            arg: { kind: "literal", value: -1 },
+          },
+          right: { kind: "literal", value: 0 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.setPair" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim);
+
+    interp.step();
+    sim.tick();
+
+    expect(sim.getTelemetry()[0].motorTargets.left).toBe(0);
+    expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_MATH_DOMAIN")).toBe(true);
+  });
+});
 
 describe("Interpreter", () => {
   describe("basic execution (SET_MOTOR + WAIT_TICKS)", () => {

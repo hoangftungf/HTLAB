@@ -49,6 +49,12 @@ export default function SimulationView({ sim, mapData, running }: SimulationView
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const container = containerRef.current;
+
+    // Dùng kích thước thật nếu có, nếu chưa có thì fallback tối thiểu 800x600
+    const initW = container.clientWidth || 800;
+    const initH = container.clientHeight || 600;
+
     const app = new Application();
     appRef.current = app;
 
@@ -56,8 +62,8 @@ export default function SimulationView({ sim, mapData, running }: SimulationView
 
     (async () => {
       await app.init({
-        width: containerRef.current!.clientWidth,
-        height: containerRef.current!.clientHeight,
+        width: initW,
+        height: initH,
         backgroundColor: 0x0f0f23,
         antialias: true,
         resolution: window.devicePixelRatio || 1,
@@ -69,7 +75,7 @@ export default function SimulationView({ sim, mapData, running }: SimulationView
         return;
       }
 
-      containerRef.current!.appendChild(app.canvas);
+      container.appendChild(app.canvas);
 
       // Tạo container thế giới (dùng cho thu phóng/kéo)
       const world = new Container();
@@ -103,6 +109,19 @@ export default function SimulationView({ sim, mapData, running }: SimulationView
       if (mapData) {
         drawMapTexture(mapData, mapSprite);
       }
+
+      // Theo dõi kích thước container và resize renderer
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const w = entry.contentRect.width;
+          const h = entry.contentRect.height;
+          if (w > 0 && h > 0) {
+            app.renderer.resize(w, h);
+          }
+        }
+      });
+      resizeObserver.observe(container);
+      (app.canvas as any).__resizeObserver = resizeObserver;
 
       // Thu phóng bằng con lăn chuột
       app.canvas.addEventListener("wheel", (e: WheelEvent) => {
@@ -146,17 +165,23 @@ export default function SimulationView({ sim, mapData, running }: SimulationView
         dragRef.current.active = false;
       });
 
-      // Bộ xử lý đổi kích thước
-      const handleResize = () => {
-        if (!containerRef.current) return;
-        app.renderer.resize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-      };
-      window.addEventListener("resize", handleResize);
+      // Khi container được gán kích thước bởi flex layout, resize ngay
+      if (container.clientWidth > 0 && container.clientHeight > 0) {
+        app.renderer.resize(container.clientWidth, container.clientHeight);
+      }
     })();
 
     return () => {
       destroyed = true;
-      app.destroy(true);
+      // An toàn cleanup: async init có thể chưa hoàn tất (React StrictMode double-mount)
+      try {
+        const currentApp = appRef.current;
+        if (currentApp?.canvas) {
+          const obs = (currentApp.canvas as any)?.__resizeObserver;
+          if (obs) obs.disconnect();
+        }
+      } catch {}
+      try { app.destroy(true); } catch {}
       appRef.current = null;
     };
   }, []);

@@ -26,6 +26,23 @@ export const toolbox: any = {
         { kind: "block", type: "turn_left" },
         { kind: "block", type: "turn_right" },
         { kind: "block", type: "start_motor" },
+        {
+          kind: "block",
+          type: "motion_set_motors_v2",
+          inputs: {
+            LEFT: { shadow: { type: "value_number", fields: { NUM: 0.3 } } },
+            RIGHT: { shadow: { type: "value_number", fields: { NUM: 0.3 } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "motion_set_motors_for_time_v2",
+          inputs: {
+            LEFT: { shadow: { type: "value_number", fields: { NUM: 0.3 } } },
+            RIGHT: { shadow: { type: "value_number", fields: { NUM: 0.3 } } },
+            SECONDS: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+          },
+        },
       ],
     },
     {
@@ -36,6 +53,50 @@ export const toolbox: any = {
         { kind: "block", type: "read_sensor_road" },
         { kind: "block", type: "sensor_group_detected" },
         { kind: "block", type: "line_position" },
+        { kind: "block", type: "value_sensor_road" },
+        { kind: "block", type: "value_line_position" },
+        { kind: "block", type: "logic_sensor_group" },
+        { kind: "block", type: "remote_control_button" },
+      ],
+    },
+    {
+      kind: "category",
+      name: "Values",
+      colour: 45,
+      contents: [
+        { kind: "block", type: "value_number" },
+        { kind: "block", type: "value_variable" },
+        {
+          kind: "block",
+          type: "math_binary",
+          inputs: {
+            A: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+            B: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "math_remainder",
+          inputs: {
+            A: { shadow: { type: "value_number", fields: { NUM: 5 } } },
+            B: { shadow: { type: "value_number", fields: { NUM: 2 } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "math_unary",
+          inputs: {
+            ARG: { shadow: { type: "value_number", fields: { NUM: 90 } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "math_random_range",
+          inputs: {
+            MIN: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+            MAX: { shadow: { type: "value_number", fields: { NUM: 10 } } },
+          },
+        },
       ],
     },
     {
@@ -46,6 +107,76 @@ export const toolbox: any = {
         { kind: "block", type: "if_sensor" },
         { kind: "block", type: "repeat_loop" },
         { kind: "block", type: "wait_block" },
+        { kind: "block", type: "logic_literal_v2" },
+        {
+          kind: "block",
+          type: "logic_compare_v2",
+          inputs: {
+            A: { shadow: { type: "value_number", fields: { NUM: 0 } } },
+            B: { shadow: { type: "value_number", fields: { NUM: 0 } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "logic_operation_v2",
+          inputs: {
+            A: { shadow: { type: "logic_literal_v2", fields: { BOOL: "TRUE" } } },
+            B: { shadow: { type: "logic_literal_v2", fields: { BOOL: "FALSE" } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "logic_not_v2",
+          inputs: {
+            BOOL: { shadow: { type: "logic_literal_v2", fields: { BOOL: "TRUE" } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "control_if_v2",
+          inputs: {
+            COND: { shadow: { type: "logic_literal_v2", fields: { BOOL: "TRUE" } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "control_if_else_v2",
+          inputs: {
+            COND: { shadow: { type: "logic_literal_v2", fields: { BOOL: "TRUE" } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "control_repeat_times_v2",
+          inputs: {
+            TIMES: { shadow: { type: "value_number", fields: { NUM: 3 } } },
+          },
+        },
+        { kind: "block", type: "control_repeat_forever" },
+        {
+          kind: "block",
+          type: "control_repeat_until",
+          inputs: {
+            COND: { shadow: { type: "logic_literal_v2", fields: { BOOL: "FALSE" } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "wait_seconds_v2",
+          inputs: {
+            SECONDS: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "control_wait_until",
+          inputs: {
+            COND: { shadow: { type: "logic_literal_v2", fields: { BOOL: "FALSE" } } },
+            TIMEOUT: { shadow: { type: "value_number", fields: { NUM: 600 } } },
+          },
+        },
+        { kind: "block", type: "control_break" },
+        { kind: "block", type: "control_return" },
       ],
     },
     {
@@ -54,6 +185,14 @@ export const toolbox: any = {
       colour: 330,
       contents: [
         { kind: "block", type: "set_var" },
+        {
+          kind: "block",
+          type: "set_var_v2",
+          inputs: {
+            VALUE: { shadow: { type: "value_number", fields: { NUM: 0 } } },
+          },
+        },
+        { kind: "block", type: "value_variable" },
       ],
     },
   ],

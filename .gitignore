@@ -32,3 +32,5 @@ cards/.inflight
 
 # Source reference documents that may not be redistributable
 docs/source_docs/*.pdf
+
+.vercel
