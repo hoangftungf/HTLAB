@@ -106,6 +106,36 @@ html, body, #root {
   opacity: 0.88;
 }
 
+.blockly-workspace-container .blocklyMainWorkspaceScrollbar.blocklyScrollbarVertical {
+  width: 8px !important;
+}
+
+.blockly-workspace-container .blocklyMainWorkspaceScrollbar.blocklyScrollbarHorizontal {
+  height: 8px !important;
+}
+
+.blockly-workspace-container
+  .blocklyMainWorkspaceScrollbar.blocklyScrollbarVertical
+  .blocklyScrollbarBackground,
+.blockly-workspace-container
+  .blocklyMainWorkspaceScrollbar.blocklyScrollbarVertical
+  .blocklyScrollbarHandle {
+  width: 6px !important;
+  rx: 3px;
+  ry: 3px;
+}
+
+.blockly-workspace-container
+  .blocklyMainWorkspaceScrollbar.blocklyScrollbarHorizontal
+  .blocklyScrollbarBackground,
+.blockly-workspace-container
+  .blocklyMainWorkspaceScrollbar.blocklyScrollbarHorizontal
+  .blocklyScrollbarHandle {
+  height: 6px !important;
+  rx: 3px;
+  ry: 3px;
+}
+
 .blockly-workspace-container .blocklyScrollbarBackground:hover + .blocklyScrollbarHandle,
 .blockly-workspace-container .blocklyScrollbarHandle:hover {
   fill: #ff5f1f;
