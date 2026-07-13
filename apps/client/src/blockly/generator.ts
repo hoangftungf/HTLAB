@@ -34,13 +34,27 @@ interface IRCCodePayloadLocal {
   };
 }
 
+type IRValueTypeLocal = "Number" | "Boolean" | "String" | "Any" | "Void";
+
+interface IRVariableDeclarationLocal {
+  id?: string;
+  name: string;
+  valueType?: Exclude<IRValueTypeLocal, "Void">;
+}
+
+interface IRFunctionParameterLocal {
+  id?: string;
+  name: string;
+  valueType: Exclude<IRValueTypeLocal, "Void">;
+}
+
 type IRValueExpressionLocal =
   | { kind: "literal"; value: IRPrimitiveLocal }
-  | { kind: "variable"; name: string }
+  | { kind: "variable"; name: string; id?: string }
   | { kind: "sensor"; sensor: string; port?: string | number; channel?: number }
   | { kind: "unary"; op: string; arg: IRValueExpressionLocal; angleUnit?: "degree" | "radian" }
   | { kind: "binary"; op: string; left: IRValueExpressionLocal; right: IRValueExpressionLocal }
-  | { kind: "call"; callee: string; args: IRValueExpressionLocal[] }
+  | { kind: "call"; callee: string; args: IRValueExpressionLocal[]; calleeId?: string }
   | { kind: "c-code"; payload: IRCCodePayloadLocal };
 
 type IRBooleanExpressionLocal =
@@ -82,11 +96,22 @@ interface IRDiagnosticNodeLocal {
 
 type IRNodeLocal = IRCommandNodeLocal | IRDiagnosticNodeLocal;
 
+interface IRFunctionDefinitionLocal {
+  id: string;
+  name: string;
+  params: IRFunctionParameterLocal[];
+  returnType: IRValueTypeLocal;
+  body: IRNodeLocal[];
+  source?: IRSourceRefLocal;
+}
+
 interface IRProgramV2Local {
   version: 2;
   commands: IRCommand[];
   nodes: IRNodeLocal[];
   diagnostics: IRDiagnosticLocal[];
+  variables?: IRVariableDeclarationLocal[];
+  functions?: IRFunctionDefinitionLocal[];
   metadata: {
     generator: string;
     generatedAt?: string;
@@ -139,8 +164,12 @@ const V2_ONLY_BLOCKS = new Set([
   "patrol_start_motor_until_sensor",
   "patrol_start_button",
   "set_var_v2",
+  "change_var_v2",
   "value_number",
   "value_variable",
+  "variables_get",
+  "variables_set",
+  "math_change",
   "value_sensor_road",
   "value_line_position",
   "math_binary",
@@ -199,6 +228,11 @@ const V2_ONLY_BLOCKS = new Set([
   "control_wait_until",
   "control_break",
   "control_return",
+  "loop_return_value",
+  "my_block_definition",
+  "my_block_call_statement",
+  "my_block_call_value",
+  "my_block_param_value",
   "wait_seconds_v2",
 ]);
 
@@ -210,9 +244,10 @@ function nextLabel(): number {
 export function workspaceToIR(workspace: Blockly.Workspace): IRProgram {
   labelCounter = 0;
   const topBlocks = workspace.getTopBlocks(true).filter((block) => block.isEnabled());
+  const variables = collectVariableDeclarations(workspace);
 
-  if (topBlocks.some(blockRequiresV2)) {
-    return workspaceToV2IR(topBlocks) as unknown as IRProgram;
+  if (topBlocks.some(blockRequiresV2) || variables.length > 0) {
+    return workspaceToV2IR(topBlocks, workspace, variables) as unknown as IRProgram;
   }
 
   const commands: IRCommand[] = [];
@@ -227,12 +262,18 @@ export function workspaceToIR(workspace: Blockly.Workspace): IRProgram {
   return { commands, version: 1 };
 }
 
-function workspaceToV2IR(topBlocks: Blockly.Block[]): IRProgramV2Local {
-  const nodes = topBlocks.flatMap(blockSequenceToV2Nodes);
-  const diagnostics = collectDiagnostics(nodes);
+function workspaceToV2IR(
+  topBlocks: Blockly.Block[],
+  workspace: Blockly.Workspace,
+  variables = collectVariableDeclarations(workspace),
+): IRProgramV2Local {
+  const executableTopBlocks = topBlocks.filter((block) => block.type !== "my_block_definition");
+  const functions = topBlocks.flatMap(functionDefinitionFromBlock);
+  const nodes = executableTopBlocks.flatMap(blockSequenceToV2Nodes);
+  const diagnostics = collectDiagnostics([...nodes, ...functions.flatMap((definition) => definition.body)]);
 
   labelCounter = 0;
-  const commands = topBlocks.flatMap(blockToIR);
+  const commands = executableTopBlocks.flatMap(blockToIR);
   if (commands.length === 0 || commands[commands.length - 1]?.op !== OpCode.END_PROGRAM) {
     commands.push({ op: OpCode.END_PROGRAM, args: [] });
   }
@@ -242,6 +283,8 @@ function workspaceToV2IR(topBlocks: Blockly.Block[]): IRProgramV2Local {
     commands,
     nodes,
     diagnostics,
+    variables,
+    functions,
     metadata: {
       generator: "htlab-blockly",
       generatedAt: new Date().toISOString(),
@@ -259,6 +302,68 @@ function workspaceToV2IR(topBlocks: Blockly.Block[]): IRProgramV2Local {
       note: "Lossy compatibility lowering; IR v2 nodes are authoritative for C-010 blocks.",
     },
   };
+}
+
+function collectVariableDeclarations(workspace: Blockly.Workspace): IRVariableDeclarationLocal[] {
+  const variables = workspace.getAllVariables?.() ?? [];
+  return variables.map((variable) => ({
+    id: variable.getId(),
+    name: variable.name,
+    valueType: variable.type === "Boolean" || variable.type === "String" || variable.type === "Any"
+      ? variable.type
+      : "Number",
+  }));
+}
+
+function valueTypeFromField(block: Blockly.Block, name: string, fallback: IRValueTypeLocal): IRValueTypeLocal {
+  const value = fieldText(block, name, fallback);
+  if (value === "Number" || value === "Boolean" || value === "String" || value === "Any" || value === "Void") {
+    return value;
+  }
+  return fallback;
+}
+
+function nonVoidValueType(value: IRValueTypeLocal): Exclude<IRValueTypeLocal, "Void"> {
+  return value === "Void" ? "Any" : value;
+}
+
+function variableRefFromField(block: Blockly.Block, name: string, fallback: string): { id?: string; name: string } {
+  const field = block.getField(name) as (Blockly.FieldVariable & {
+    getVariable?: () => Blockly.VariableModel | null;
+    getText?: () => string;
+  }) | null;
+  const id = field?.getValue?.() ?? fieldText(block, name, fallback);
+  const variable = field?.getVariable?.() ?? (id ? block.workspace?.getVariableById(id) : null);
+  const variableName = variable?.name ?? field?.getText?.() ?? id ?? fallback;
+  return {
+    ...(id && id !== variableName ? { id } : {}),
+    name: variableName || fallback,
+  };
+}
+
+function variableExpressionFromField(block: Blockly.Block, name: string, fallback: string): IRValueExpressionLocal {
+  return { kind: "variable", ...variableRefFromField(block, name, fallback) };
+}
+
+function functionParameterId(block: Blockly.Block, parameterName: string): string {
+  return `${block.id}:param:${parameterName}`;
+}
+
+function functionDefinitionFromBlock(block: Blockly.Block): IRFunctionDefinitionLocal[] {
+  if (block.type !== "my_block_definition") return [];
+  const name = fieldText(block, "NAME", "my block").trim() || "my block";
+  const paramName = fieldText(block, "PARAM", "value").trim() || "value";
+  const paramType = nonVoidValueType(valueTypeFromField(block, "PARAM_TYPE", "Number"));
+  return [
+    {
+      id: block.id,
+      name,
+      params: [{ id: functionParameterId(block, paramName), name: paramName, valueType: paramType }],
+      returnType: valueTypeFromField(block, "RETURN_TYPE", "Number"),
+      body: blockSequenceToV2Nodes(block.getInputTargetBlock("BODY")),
+      source: sourceFor(block, "My Blocks"),
+    },
+  ];
 }
 
 function blockRequiresV2(block: Blockly.Block | null): boolean {
@@ -302,6 +407,7 @@ function sourceFor(block: Blockly.Block, category = categoryForType(block.type))
 function categoryForType(type: string): string {
   if (type.startsWith("patrol_")) return "Patrol line";
   if (type.startsWith("light_")) return "Light Speaker";
+  if (type.startsWith("my_block")) return "My Blocks";
   if (type.startsWith("ai_")) return "AI";
   if (type.includes("motion") || type.includes("motor") || type.includes("turn") || type === "patrol_line") return "Movement";
   if (type.includes("sensor") || type.includes("line_position") || type.includes("remote")) return "Sensors";
@@ -658,10 +764,10 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
       return literal(fieldNumber(block, "NUM", 0));
 
     case "value_variable":
-      return { kind: "variable", name: fieldText(block, "VAR", "v0") };
+      return variableExpressionFromField(block, "VAR", "v0");
 
     case "variables_get":
-      return { kind: "variable", name: fieldText(block, "VAR", "v0") };
+      return variableExpressionFromField(block, "VAR", "v0");
 
     case "read_sensor_road":
     case "value_sensor_road":
@@ -752,6 +858,18 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
         callee: "randomRange",
         args: [valueFromInput(block, "MIN", 0), valueFromInput(block, "MAX", 10)],
       };
+
+    case "my_block_call_value":
+      return {
+        kind: "call",
+        callee: fieldText(block, "NAME", "my block"),
+        args: [valueFromInput(block, "ARG0", 0)],
+      };
+
+    case "my_block_param_value": {
+      const name = fieldText(block, "PARAM", "value");
+      return { kind: "variable", name, id: `param:${name}` };
+    }
 
     default:
       return literal(0);
@@ -887,6 +1005,8 @@ function blockSequenceToV2Nodes(start: Blockly.Block | null): IRNodeLocal[] {
 }
 
 function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
+  if (block.type === "my_block_definition") return [];
+
   const effectNode = effectNodeForBlock(block);
   if (effectNode) return [effectNode];
 
@@ -1378,7 +1498,10 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       return [commandNode(block, "control.break")];
 
     case "control_return":
-      return [commandNode(block, "control.return")];
+      return [commandNode(block, "control.return", { value: valueFromInput(block, "VALUE", null) })];
+
+    case "loop_return_value":
+      return [commandNode(block, "control.return", { value: valueFromInput(block, "value", null) })];
 
     case "set_var":
       return [
@@ -1389,10 +1512,35 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       ];
 
     case "set_var_v2":
+    case "variables_set": {
+      const variable = variableRefFromField(block, "VAR", "v0");
       return [
         commandNode(block, "variable.set", {
-          name: fieldText(block, "VAR", "v0"),
+          name: variable.name,
+          ...(variable.id ? { id: variable.id } : {}),
           value: valueFromInput(block, "VALUE", 0),
+        }),
+      ];
+    }
+
+    case "change_var_v2":
+    case "math_change": {
+      const variable = variableRefFromField(block, "VAR", "v0");
+      return [
+        commandNode(block, "variable.change", {
+          name: variable.name,
+          ...(variable.id ? { id: variable.id } : {}),
+          delta: valueFromInput(block, block.type === "math_change" ? "DELTA" : "DELTA", 1),
+        }),
+      ];
+    }
+
+    case "my_block_call_statement":
+      return [
+        commandNode(block, "function.call", {
+          callee: fieldText(block, "NAME", "my block"),
+          argumentCount: literal(1),
+          arg0: valueFromInput(block, "ARG0", 0),
         }),
       ];
 
@@ -1401,6 +1549,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
     case "line_position":
     case "value_number":
     case "value_variable":
+    case "variables_get":
     case "value_sensor_road":
     case "value_line_position":
     case "math_binary":
@@ -1434,6 +1583,8 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
     case "sensor_color_detected":
     case "ai_image_recognition":
     case "ai_recognition_is":
+    case "my_block_call_value":
+    case "my_block_param_value":
       return [
         diagnosticNode(
           block,

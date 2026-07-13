@@ -96,13 +96,27 @@ export interface IRCCodePayload {
   sandbox: IRCCodeSandboxPolicy;
 }
 
+export type IRValueType = "Number" | "Boolean" | "String" | "Any" | "Void";
+
+export interface IRVariableDeclaration {
+  id?: string;
+  name: string;
+  valueType?: Exclude<IRValueType, "Void">;
+}
+
+export interface IRFunctionParameter {
+  id?: string;
+  name: string;
+  valueType: Exclude<IRValueType, "Void">;
+}
+
 export type IRValueExpression =
   | { kind: "literal"; value: IRPrimitive }
-  | { kind: "variable"; name: string }
+  | { kind: "variable"; name: string; id?: string }
   | { kind: "sensor"; sensor: string; port?: string | number; channel?: number }
   | { kind: "unary"; op: string; arg: IRValueExpression; angleUnit?: "degree" | "radian" }
   | { kind: "binary"; op: string; left: IRValueExpression; right: IRValueExpression }
-  | { kind: "call"; callee: string; args: IRValueExpression[] }
+  | { kind: "call"; callee: string; args: IRValueExpression[]; calleeId?: string }
   | { kind: "c-code"; payload: IRCCodePayload };
 
 export type IRBooleanExpression =
@@ -140,6 +154,15 @@ export interface IRDiagnosticNode {
 
 export type IRNode = IRCommandV2 | IRDiagnosticNode;
 
+export interface IRFunctionDefinition {
+  id: string;
+  name: string;
+  params: IRFunctionParameter[];
+  returnType: IRValueType;
+  body: IRNode[];
+  source?: IRSourceRef;
+}
+
 export interface IRProgramMetadata {
   generator: string;
   generatedAt?: string;
@@ -155,6 +178,8 @@ export interface IRProgramV2 {
   commands: IRCommand[];
   nodes: IRNode[];
   diagnostics: IRDiagnostic[];
+  variables?: IRVariableDeclaration[];
+  functions?: IRFunctionDefinition[];
   metadata: IRProgramMetadata;
   legacyV1?: {
     commands: IRCommand[];
@@ -196,4 +221,6 @@ export interface InterpreterConfig {
   maxTurnTicks?: number;
   /** Deterministic seed for v2 random expressions. */
   randomSeed?: number;
+  /** Max nested custom-block calls before a diagnostic stop. Defaults to 32. */
+  maxCallDepth?: number;
 }

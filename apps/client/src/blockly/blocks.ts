@@ -397,9 +397,9 @@ Blockly.Blocks["value_variable"] = {
       message0: "var %1",
       args0: [
         {
-          type: "field_dropdown",
+          type: "field_variable",
           name: "VAR",
-          options: [["v0", "v0"], ["v1", "v1"], ["v2", "v2"], ["v3", "v3"], ["v4", "v4"], ["v5", "v5"], ["v6", "v6"], ["v7", "v7"]],
+          variable: "v0",
         },
       ],
       colour: BLOCK_COLOURS.variables,
@@ -416,9 +416,9 @@ Blockly.Blocks["set_var_v2"] = {
       message0: "Set var %1 = %2",
       args0: [
         {
-          type: "field_dropdown",
+          type: "field_variable",
           name: "VAR",
-          options: [["v0", "v0"], ["v1", "v1"], ["v2", "v2"], ["v3", "v3"], ["v4", "v4"], ["v5", "v5"], ["v6", "v6"], ["v7", "v7"]],
+          variable: "v0",
         },
         { type: "input_value", name: "VALUE", check: "Number" },
       ],
@@ -426,6 +426,27 @@ Blockly.Blocks["set_var_v2"] = {
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set a variable from a value expression",
+    });
+  },
+};
+
+Blockly.Blocks["change_var_v2"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "change_var_v2",
+      message0: "Change var %1 by %2",
+      args0: [
+        {
+          type: "field_variable",
+          name: "VAR",
+          variable: "v0",
+        },
+        { type: "input_value", name: "DELTA", check: "Number" },
+      ],
+      colour: BLOCK_COLOURS.variables,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Add a computed value to a variable",
     });
   },
 };
@@ -780,11 +801,85 @@ Blockly.Blocks["control_return"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "control_return",
-      message0: "Return",
+      message0: "Return %1",
+      args0: [{ type: "input_value", name: "VALUE", check: "Number" }],
       colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
-      tooltip: "Stop program execution",
+      tooltip: "Return a value from a custom block",
+    });
+  },
+};
+
+Blockly.Blocks["my_block_definition"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "my_block_definition",
+      message0: "Define block %1 param %2 type %3 returns %4",
+      args0: [
+        { type: "field_input", name: "NAME", text: "my block" },
+        { type: "field_input", name: "PARAM", text: "value" },
+        {
+          type: "field_dropdown",
+          name: "PARAM_TYPE",
+          options: [["Number", "Number"], ["Boolean", "Boolean"], ["String", "String"], ["Any", "Any"]],
+        },
+        {
+          type: "field_dropdown",
+          name: "RETURN_TYPE",
+          options: [["Number", "Number"], ["Boolean", "Boolean"], ["String", "String"], ["Any", "Any"], ["Void", "Void"]],
+        },
+      ],
+      message1: "do %1",
+      args1: [{ type: "input_statement", name: "BODY" }],
+      colour: BLOCK_COLOURS.myBlocks,
+      tooltip: "Define a custom block with one typed parameter",
+    });
+  },
+};
+
+Blockly.Blocks["my_block_call_statement"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "my_block_call_statement",
+      message0: "Call block %1 with %2",
+      args0: [
+        { type: "field_input", name: "NAME", text: "my block" },
+        { type: "input_value", name: "ARG0", check: "Number" },
+      ],
+      colour: BLOCK_COLOURS.myBlocks,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Call a custom block and ignore its return value",
+    });
+  },
+};
+
+Blockly.Blocks["my_block_call_value"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "my_block_call_value",
+      message0: "Call block %1 with %2",
+      args0: [
+        { type: "field_input", name: "NAME", text: "my block" },
+        { type: "input_value", name: "ARG0", check: "Number" },
+      ],
+      colour: BLOCK_COLOURS.myBlocks,
+      output: "Number",
+      tooltip: "Call a custom block and use its return value",
+    });
+  },
+};
+
+Blockly.Blocks["my_block_param_value"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "my_block_param_value",
+      message0: "param %1",
+      args0: [{ type: "field_input", name: "PARAM", text: "value" }],
+      colour: BLOCK_COLOURS.myBlocks,
+      output: "Number",
+      tooltip: "Read the current custom-block parameter",
     });
   },
 };

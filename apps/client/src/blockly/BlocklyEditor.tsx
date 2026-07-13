@@ -91,6 +91,10 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
     });
 
     workspaceRef.current = workspace;
+    workspace.registerButtonCallback("CREATE_VARIABLE", (button) => {
+      const targetWorkspace = (button as any).getTargetWorkspace?.() ?? workspace;
+      Blockly.Variables.createVariableButtonHandler(targetWorkspace);
+    });
 
     // Nạp không gian làm việc ban đầu nếu có
     if (initialXml) {

@@ -262,7 +262,13 @@ export const toolbox: any = {
           },
         },
         { kind: "block", type: "control_break" },
-        { kind: "block", type: "control_return" },
+        {
+          kind: "block",
+          type: "control_return",
+          inputs: {
+            VALUE: { shadow: { type: "value_number", fields: { NUM: 0 } } },
+          },
+        },
       ],
     },
     {
@@ -270,6 +276,7 @@ export const toolbox: any = {
       name: "Variables",
       colour: "#d6b51d",
       contents: [
+        { kind: "button", text: "Create variable", callbackKey: "CREATE_VARIABLE" },
         { kind: "block", type: "set_var" },
         {
           kind: "block",
@@ -278,7 +285,40 @@ export const toolbox: any = {
             VALUE: { shadow: { type: "value_number", fields: { NUM: 0 } } },
           },
         },
+        {
+          kind: "block",
+          type: "change_var_v2",
+          inputs: {
+            DELTA: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+          },
+        },
         { kind: "block", type: "value_variable" },
+      ],
+    },
+    {
+      kind: "category",
+      name: "My Blocks",
+      colour: "#2f6dff",
+      contents: [
+        {
+          kind: "block",
+          type: "my_block_definition",
+        },
+        {
+          kind: "block",
+          type: "my_block_call_statement",
+          inputs: {
+            ARG0: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+          },
+        },
+        {
+          kind: "block",
+          type: "my_block_call_value",
+          inputs: {
+            ARG0: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+          },
+        },
+        { kind: "block", type: "my_block_param_value" },
       ],
     },
     {

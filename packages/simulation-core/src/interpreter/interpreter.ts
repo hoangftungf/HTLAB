@@ -7,6 +7,8 @@ import {
   type IRCommandV2,
   type IRDiagnostic,
   type IRFieldValue,
+  type IRFunctionDefinition,
+  type IRFunctionParameter,
   type IRNode,
   type IRProgram,
   type IRProgramV1,
@@ -23,6 +25,7 @@ const DEFAULT_MAX_LOOP_ITERATIONS = 10000;
 const DEFAULT_WAIT_UNTIL_TIMEOUT_TICKS = 600;
 const DEFAULT_MAX_PATROL_TICKS = 1200;
 const DEFAULT_MAX_TURN_TICKS = 360;
+const DEFAULT_MAX_CALL_DEPTH = 32;
 const LINE_FOLLOWER_MIN_DETECTION_TICKS = 3;
 
 interface LoopFrameV1 {
@@ -46,6 +49,17 @@ interface WaitUntilState {
   condition: IRBooleanExpression;
   remaining: number;
   source?: IRSourceRef;
+}
+
+interface CallFrame {
+  definition: IRFunctionDefinition;
+  locals: Map<string, IRFieldValue>;
+}
+
+interface FunctionExecutionResult {
+  returned: boolean;
+  value?: IRFieldValue;
+  broke?: boolean;
 }
 
 type MotorPort = "A" | "B" | "C" | "D" | "all";
@@ -412,9 +426,15 @@ function createV2Interpreter(
   const waitUntilTimeoutTicks = config.waitUntilTimeoutTicks ?? DEFAULT_WAIT_UNTIL_TIMEOUT_TICKS;
   const maxPatrolTicks = config.maxPatrolTicks ?? DEFAULT_MAX_PATROL_TICKS;
   const maxTurnTicks = config.maxTurnTicks ?? DEFAULT_MAX_TURN_TICKS;
+  const maxCallDepth = config.maxCallDepth ?? DEFAULT_MAX_CALL_DEPTH;
   const rng = createRNG(config.randomSeed ?? 42);
   const diagnostics: IRDiagnostic[] = [...program.diagnostics];
-  const variables = new Map<string, number>();
+  const variables = new Map<string, IRFieldValue>();
+  const functionsById = new Map((program.functions ?? []).map((definition) => [definition.id, definition]));
+  const functionsByName = new Map(
+    (program.functions ?? []).map((definition) => [normalizeFunctionName(definition.name), definition]),
+  );
+  const callStack: CallFrame[] = [];
   const frames: V2Frame[] = [{ nodes: program.nodes, index: 0 }];
 
   let waitCounter = 0;
@@ -425,6 +445,48 @@ function createV2Interpreter(
   let lineFollowerMode: "tank" | "omni" | null = null;
   let tickCount = 0;
   let done = false;
+
+  function normalizeFunctionName(name: string): string {
+    return name.trim().toLowerCase();
+  }
+
+  function variableKeys(name: string, id?: string): string[] {
+    return id && id !== name ? [id, name] : [name];
+  }
+
+  function setLocalVariable(locals: Map<string, IRFieldValue>, parameter: IRFunctionParameter, value: IRFieldValue): void {
+    for (const key of variableKeys(parameter.name, parameter.id)) {
+      locals.set(key, value);
+    }
+  }
+
+  function readVariable(name: string, id?: string): IRFieldValue {
+    for (let i = callStack.length - 1; i >= 0; i--) {
+      const locals = callStack[i].locals;
+      for (const key of variableKeys(name, id)) {
+        if (locals.has(key)) return locals.get(key) ?? 0;
+      }
+    }
+    for (const key of variableKeys(name, id)) {
+      if (variables.has(key)) return variables.get(key) ?? 0;
+    }
+    return 0;
+  }
+
+  function writeVariable(name: string, id: string | undefined, value: IRFieldValue): void {
+    const keys = variableKeys(name, id);
+    for (let i = callStack.length - 1; i >= 0; i--) {
+      const locals = callStack[i].locals;
+      const localKey = keys.find((key) => locals.has(key));
+      if (localKey) {
+        locals.set(localKey, value);
+        return;
+      }
+    }
+    for (const key of keys) {
+      variables.set(key, value);
+    }
+  }
 
   function pushDiagnostic(diagnostic: IRDiagnostic): void {
     diagnostics.push(diagnostic);
@@ -565,7 +627,7 @@ function createV2Interpreter(
         return expression.value;
 
       case "variable":
-        return variables.get(expression.name) ?? 0;
+        return readVariable(expression.name, expression.id);
 
       case "sensor":
         return readSensorValue(expression);
@@ -647,7 +709,7 @@ function createV2Interpreter(
       }
 
       case "call":
-        return evalCall(expression.callee, expression.args, rng);
+        return evalCall(expression.callee, expression.args, rng, expression.calleeId);
 
       case "c-code":
         pushDiagnostic(createDiagnostic("HTLAB_C_SANDBOX_REQUIRED", "C Code did not run because sandbox execution is not available."));
@@ -655,15 +717,163 @@ function createV2Interpreter(
     }
   }
 
-  function evalCall(callee: string, args: IRValueExpression[], rngInstance: RNG): number {
+  function evalCall(callee: string, args: IRValueExpression[], rngInstance: RNG, calleeId?: string): IRFieldValue {
     const name = callee.toLowerCase();
     if (name === "randomrange" || name === "random") {
       const min = Math.ceil(evalNumber(args[0] ?? { kind: "literal", value: 0 }));
       const max = Math.floor(evalNumber(args[1] ?? { kind: "literal", value: 1 }));
       return rngInstance.nextInt(Math.min(min, max), Math.max(min, max));
     }
+    const definition = findFunction(callee, calleeId);
+    if (definition) {
+      return invokeFunction(definition, args);
+    }
     pushDiagnostic(createDiagnostic("HTLAB_UNKNOWN_CALL", `Unknown value function ${callee}.`));
     return 0;
+  }
+
+  function findFunction(callee: string, calleeId?: string): IRFunctionDefinition | undefined {
+    if (calleeId) {
+      const byId = functionsById.get(calleeId);
+      if (byId) return byId;
+    }
+    return functionsByName.get(normalizeFunctionName(callee));
+  }
+
+  function invokeFunction(definition: IRFunctionDefinition, args: IRValueExpression[]): IRFieldValue {
+    if (callStack.some((frame) => frame.definition.id === definition.id)) {
+      pushDiagnostic(createDiagnostic("HTLAB_RECURSION_GUARD", `Recursive custom block ${definition.name} was stopped.`, definition.source));
+      return 0;
+    }
+    if (callStack.length >= maxCallDepth) {
+      pushDiagnostic(createDiagnostic("HTLAB_MAX_CALL_DEPTH", `Custom block call depth exceeded ${maxCallDepth}.`, definition.source));
+      return 0;
+    }
+
+    const evaluatedArgs = args.map(evalValue);
+    const locals = new Map<string, IRFieldValue>();
+    definition.params.forEach((parameter, index) => {
+      setLocalVariable(locals, parameter, evaluatedArgs[index] ?? 0);
+    });
+
+    callStack.push({ definition, locals });
+    const result = executeFunctionNodes(definition.body);
+    callStack.pop();
+
+    if (result.broke) {
+      pushDiagnostic(createDiagnostic("HTLAB_BREAK_WITHOUT_LOOP", "break was used outside a loop.", definition.source));
+    }
+    return result.returned ? result.value ?? 0 : 0;
+  }
+
+  function commandCallArgs(command: IRCommandV2): IRValueExpression[] {
+    const countExpression = command.args.argumentCount;
+    const explicitCount = countExpression === undefined
+      ? undefined
+      : Math.max(0, Math.floor(evalNumber(asValueExpression(countExpression))));
+    const count = explicitCount ?? Object.keys(command.args).filter((key) => /^arg\d+$/.test(key)).length;
+    const args: IRValueExpression[] = [];
+    for (let i = 0; i < count; i++) {
+      args.push(asValueExpression(command.args[`arg${i}`]));
+    }
+    return args;
+  }
+
+  function executeFunctionNodes(nodes: IRNode[]): FunctionExecutionResult {
+    let executed = 0;
+    for (const node of nodes) {
+      if (executed >= maxInstructionsPerTick) {
+        pushDiagnostic(createDiagnostic("HTLAB_FUNCTION_INSTRUCTION_CAP", `Custom block stopped after ${maxInstructionsPerTick} inline instructions.`));
+        return { returned: true, value: 0 };
+      }
+      executed++;
+
+      if (node.kind === "diagnostic") {
+        pushDiagnostic(node.diagnostic);
+        continue;
+      }
+
+      const result = executeFunctionCommand(node);
+      if (result.returned || result.broke) return result;
+    }
+    return { returned: false };
+  }
+
+  function executeFunctionCommand(command: IRCommandV2): FunctionExecutionResult {
+    switch (command.op) {
+      case "control.return":
+        return { returned: true, value: evalValue(asValueExpression(command.args.value)) };
+
+      case "control.if":
+        if (evalBoolean(asBooleanExpression(command.args.condition))) {
+          return executeFunctionNodes(command.children?.then ?? command.children?.do ?? []);
+        }
+        return { returned: false };
+
+      case "control.ifElse":
+        return executeFunctionNodes(
+          evalBoolean(asBooleanExpression(command.args.condition))
+            ? command.children?.then ?? []
+            : command.children?.else ?? [],
+        );
+
+      case "control.repeatTimes": {
+        const times = Math.max(0, Math.floor(numericArg(command, ["times", "count"], 0)));
+        const iterations = Math.min(times, maxLoopIterations);
+        for (let i = 0; i < iterations; i++) {
+          const result = executeFunctionNodes(command.children?.do ?? []);
+          if (result.returned) return result;
+          if (result.broke) return { returned: false };
+        }
+        if (times > maxLoopIterations) {
+          pushDiagnostic(createDiagnostic("HTLAB_LOOP_CAP", `Loop stopped after ${maxLoopIterations} iterations.`, command.source));
+        }
+        return { returned: false };
+      }
+
+      case "control.repeatUntil": {
+        let iterations = 0;
+        const condition = asBooleanExpression(command.args.condition);
+        while (!evalBoolean(condition)) {
+          if (iterations >= maxLoopIterations) {
+            pushDiagnostic(createDiagnostic("HTLAB_LOOP_CAP", `Loop stopped after ${maxLoopIterations} iterations.`, command.source));
+            return { returned: false };
+          }
+          const result = executeFunctionNodes(command.children?.do ?? []);
+          if (result.returned) return result;
+          if (result.broke) return { returned: false };
+          iterations++;
+        }
+        return { returned: false };
+      }
+
+      case "control.repeatForever":
+        for (let i = 0; i < maxLoopIterations; i++) {
+          const result = executeFunctionNodes(command.children?.do ?? []);
+          if (result.returned) return result;
+          if (result.broke) return { returned: false };
+        }
+        pushDiagnostic(createDiagnostic("HTLAB_LOOP_CAP", `Loop stopped after ${maxLoopIterations} iterations.`, command.source));
+        return { returned: false };
+
+      case "control.break":
+        return { returned: false, broke: true };
+
+      case "function.call": {
+        const callee = toText(command.args.callee, "");
+        const definition = findFunction(callee, toText(command.args.calleeId, ""));
+        if (definition) {
+          invokeFunction(definition, commandCallArgs(command));
+        } else {
+          pushDiagnostic(createDiagnostic("HTLAB_UNKNOWN_CALL", `Unknown custom block ${callee}.`, command.source));
+        }
+        return { returned: false };
+      }
+
+      default:
+        executeCommand(command, { nodes: [], index: 0 });
+        return { returned: false };
+    }
   }
 
   function evalBoolean(expression: IRBooleanExpression): boolean {
@@ -1192,7 +1402,29 @@ function createV2Interpreter(
 
       case "variable.set": {
         const name = toText(command.args.name, "v0");
-        variables.set(name, evalNumber(asValueExpression(command.args.value)));
+        const id = toText(command.args.id, "");
+        writeVariable(name, id || undefined, evalValue(asValueExpression(command.args.value)));
+        frame.index++;
+        return false;
+      }
+
+      case "variable.change": {
+        const name = toText(command.args.name, "v0");
+        const id = toText(command.args.id, "");
+        const nextValue = toNumber(readVariable(name, id || undefined)) + evalNumber(asValueExpression(command.args.delta));
+        writeVariable(name, id || undefined, nextValue);
+        frame.index++;
+        return false;
+      }
+
+      case "function.call": {
+        const callee = toText(command.args.callee, "");
+        const definition = findFunction(callee, toText(command.args.calleeId, ""));
+        if (definition) {
+          invokeFunction(definition, commandCallArgs(command));
+        } else {
+          pushDiagnostic(createDiagnostic("HTLAB_UNKNOWN_CALL", `Unknown custom block ${callee}.`, command.source));
+        }
         frame.index++;
         return false;
       }
@@ -1279,9 +1511,9 @@ function createV2Interpreter(
         return false;
 
       case "control.return":
-        done = true;
+        pushDiagnostic(createDiagnostic("HTLAB_RETURN_OUTSIDE_FUNCTION", "Return value was used outside a custom block.", command.source));
         frame.index++;
-        return true;
+        return false;
 
       default:
         if (command.metadata.runtimeStatus === "stub" || command.metadata.runtimeStatus === "blocked-by-sandbox") {
@@ -1310,6 +1542,7 @@ function createV2Interpreter(
     frames.length = 0;
     frames.push({ nodes: program.nodes, index: 0 });
     variables.clear();
+    callStack.length = 0;
     waitCounter = 0;
     waitUntil = null;
     activeMotion = null;
