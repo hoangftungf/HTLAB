@@ -12,22 +12,6 @@ type ToolboxBlock = {
   fields?: Record<string, unknown>;
 };
 
-type ToolboxButton = {
-  kind: "button";
-  text: string;
-  callbackKey: string;
-  callbackkey: string;
-};
-
-type ToolboxVariable = {
-  getId(): string;
-  name: string;
-};
-
-type VariableWorkspace = {
-  getAllVariables?: () => ToolboxVariable[];
-};
-
 export const VARIABLE_CATEGORY_CALLBACK_KEY = "HTLAB_VARIABLE";
 export const VARIABLE_CATEGORY_COLOUR = "#EBCE42";
 
@@ -48,35 +32,75 @@ const block = (
   options: Pick<ToolboxBlock, "inputs" | "fields"> = {},
 ): ToolboxBlock => ({ kind: "block", type, ...options });
 
-const createVariableButton = (): ToolboxButton => ({
-  kind: "button",
-  text: "Create a variable",
-  callbackKey: "CREATE_VARIABLE",
-  callbackkey: "CREATE_VARIABLE",
-});
+function createXmlElement(tagName: string): Element {
+  return document.createElement(tagName);
+}
 
-const variableField = (variable: ToolboxVariable) => ({
-  fields: { VAR: variable.getId() },
-});
+function createTextNode(text: string): Text {
+  return document.createTextNode(text);
+}
 
-export function variableToolboxFlyout(workspace: VariableWorkspace): Array<ToolboxButton | ToolboxBlock> {
-  const variables = workspace.getAllVariables?.() ?? [];
-  const flyoutItems: Array<ToolboxButton | ToolboxBlock> = [createVariableButton()];
+function createVariableButton(): Element {
+  const button = createXmlElement("button");
+  button.setAttribute("text", "Create a variable");
+  button.setAttribute("callbackKey", "CREATE_VARIABLE");
+  return button;
+}
 
-  if (variables.length === 0) return flyoutItems;
+function createFieldVariable(variable: { getId(): string; name: string; type: string }): Element {
+  const field = createXmlElement("field");
+  field.setAttribute("name", "VAR");
+  field.setAttribute("id", variable.getId());
+  field.setAttribute("variabletype", variable.type || "Number");
+  field.appendChild(createTextNode(variable.name));
+  return field;
+}
 
-  const [firstVariable] = variables;
-  flyoutItems.push(
-    block("value_variable", variableField(firstVariable)),
-    block("set_var_v2", {
-      ...variableField(firstVariable),
-      inputs: { VALUE: numberShadow(0) },
-    }),
-    block("change_var_v2", {
-      ...variableField(firstVariable),
-      inputs: { DELTA: numberShadow(1) },
-    }),
-  );
+function createShadowNumber(value: number): Element {
+  const shadow = createXmlElement("shadow");
+  shadow.setAttribute("type", "value_number");
+  const field = createXmlElement("field");
+  field.setAttribute("name", "NUM");
+  field.appendChild(createTextNode(String(value)));
+  shadow.appendChild(field);
+  return shadow;
+}
+
+function createValueInput(name: string, value: number): Element {
+  const input = createXmlElement("value");
+  input.setAttribute("name", name);
+  input.appendChild(createShadowNumber(value));
+  return input;
+}
+
+function createVariableBlocks(variable: { getId(): string; name: string; type: string }): Element[] {
+  const reporter = createXmlElement("block");
+  reporter.setAttribute("type", "value_variable");
+  reporter.appendChild(createFieldVariable(variable));
+
+  const setBlock = createXmlElement("block");
+  setBlock.setAttribute("type", "set_var_v2");
+  setBlock.setAttribute("inline", "true");
+  setBlock.appendChild(createFieldVariable(variable));
+  setBlock.appendChild(createValueInput("VALUE", 0));
+
+  const changeBlock = createXmlElement("block");
+  changeBlock.setAttribute("type", "change_var_v2");
+  changeBlock.setAttribute("inline", "true");
+  changeBlock.appendChild(createFieldVariable(variable));
+  changeBlock.appendChild(createValueInput("DELTA", 1));
+
+  return [reporter, setBlock, changeBlock];
+}
+
+export function variableToolboxFlyout(workspace: any): Element[] {
+  const mainWorkspace = workspace.isFlyout ? workspace.targetWorkspace ?? workspace : workspace;
+  const variables = mainWorkspace.getAllVariables?.() ?? [];
+  const flyoutItems: Element[] = [createVariableButton()];
+
+  for (const variable of variables) {
+    flyoutItems.push(...createVariableBlocks(variable));
+  }
 
   return flyoutItems;
 }

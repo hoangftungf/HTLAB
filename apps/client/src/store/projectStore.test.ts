@@ -817,27 +817,24 @@ describe("projectStore C-013 save/load compatibility", () => {
     expect(variableCategory.contents).toBeUndefined();
 
     const emptyWorkspace = new Blockly.Workspace();
-    const initialFlyout = variableToolboxFlyout(emptyWorkspace) as ToolboxItem[];
+    const initialFlyout = variableToolboxFlyout(emptyWorkspace) as Element[];
     expect(initialFlyout).toHaveLength(1);
-    expect(initialFlyout[0]).toMatchObject({
-      kind: "button",
-      text: "Create a variable",
-      callbackKey: "CREATE_VARIABLE",
-      callbackkey: "CREATE_VARIABLE",
-    });
+    expect(initialFlyout[0].tagName.toLowerCase()).toBe("button");
+    expect(initialFlyout[0].getAttribute("text")).toBe("Create a variable");
+    expect(initialFlyout[0].getAttribute("callbackKey")).toBe("CREATE_VARIABLE");
 
     const workspace = new Blockly.Workspace();
     workspace.createVariable("number", "Number", "var-number");
-    const flyout = variableToolboxFlyout(workspace) as ToolboxItem[];
-    const blocks = flyout.filter((item) => item.kind === "block");
+    const flyout = variableToolboxFlyout(workspace) as Element[];
+    const blocks = flyout.filter((item) => item.tagName.toLowerCase() === "block");
 
-    expect(flyout[0].text).toBe("Create a variable");
-    expect(blocks.map((item) => item.type)).toEqual([...EXPECTED_VARIABLE_TOOLBOX_TYPES]);
+    expect(flyout[0].getAttribute("text")).toBe("Create a variable");
+    expect(blocks.map((item) => item.getAttribute("type"))).toEqual([...EXPECTED_VARIABLE_TOOLBOX_TYPES]);
     for (const item of blocks) {
-      expect(item.fields?.VAR, item.type).toBe("var-number");
+      expect(item.querySelector('field[name="VAR"]')?.getAttribute("id")).toBe("var-number");
     }
-    expect(shadowNumber(blocks.find((item) => item.type === "set_var_v2")!, "VALUE")).toBe(0);
-    expect(shadowNumber(blocks.find((item) => item.type === "change_var_v2")!, "DELTA")).toBe(1);
+    expect(blocks.find((item) => item.getAttribute("type") === "set_var_v2")?.querySelector('shadow[type="value_number"] field[name="NUM"]')?.textContent).toBe("0");
+    expect(blocks.find((item) => item.getAttribute("type") === "change_var_v2")?.querySelector('shadow[type="value_number"] field[name="NUM"]')?.textContent).toBe("1");
   });
 
   it("matches WhalesBot Variable block text and input shapes", () => {
