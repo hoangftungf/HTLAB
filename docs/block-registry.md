@@ -19,16 +19,18 @@ Compatibility decisions from `docs/whalesbot-block-studio-dac-ta-block.md` secti
 
 ## C-015 toolbox and runtime QA status
 
-The Blockly toolbox now exposes every documented registry category:
-`Motion`, `Light Speaker`, `Sensor`, `Event`, `Loop`, `Logic`, `Math`,
+The line-following Blockly toolbox now exposes:
+`Motion`, `Sensor`, `Event`, `Loop`, `Logic`, `Math`,
 `Variable`, `AI`, `Patrol line`, `My Blocks`, and `C Code`. Legacy
 `initialize` and `calibrate_grayscale` blocks remain loadable for existing
-projects and samples, but are not exposed as a toolbox category.
+projects and samples, but are not exposed as a toolbox category. `Light Speaker`
+blocks also remain loadable for existing projects and telemetry compatibility,
+but are hidden from the line-following toolbox.
 
 | Category | Toolbox status | Runtime status and limitation |
 | --- | --- | --- |
 | Motion | Present, including tank, single motor, omni, and steering gear blocks from WhalesBot Block Studio | Differential-drive motor blocks run; encoder and omni blocks emit diagnostics where the simulator has no matching hardware. Steering gear is telemetry-only. |
-| Light Speaker | Present | Sound, LED, display, and electromagnet blocks emit telemetry events. `reading 1` is an intentional stub diagnostic. Color fields use hex text in the current Blockly package because the colour field plugin is not registered. |
+| Light Speaker | Hidden from the line-following toolbox | Sound, LED, display, and electromagnet blocks remain loadable for compatibility and emit telemetry events. `reading 1` is an intentional stub diagnostic. |
 | Sensor | Present | Integrated grayscale, timer, and motor encoder paths are implemented where simulator data exists. Other hardware sensors are preserved as value/boolean expressions or stub diagnostics. |
 | Event | Present | `When program execute` is treated as the main entry marker. Touch-switch async events are preserved and emit a stub diagnostic. |
 | Loop | Present | Repeat, wait, break, return, repeat-until, and wait-until lower to IR v2. While-loop compatibility remains a diagnostic stub. |

@@ -297,12 +297,11 @@ describe("projectStore C-013 save/load compatibility", () => {
     expect(block.getInput("MAX")).toBeNull();
   });
 
-  it("matches WhalesBot category set without legacy Hardware", () => {
+  it("matches the line-following toolbox category set", () => {
     const categories = collectToolboxCategoryNames((toolbox as { contents: ToolboxItem[] }).contents);
 
     expect(categories).toEqual([
       "Motion",
-      "Light Speaker",
       "Sensor",
       "Event",
       "Loop",
@@ -315,6 +314,7 @@ describe("projectStore C-013 save/load compatibility", () => {
       "C Code",
     ]);
     expect(categories).not.toContain("Hardware");
+    expect(categories).not.toContain("Light Speaker");
   });
 
   it("matches WhalesBot Motion toolbox order and visible block text", () => {

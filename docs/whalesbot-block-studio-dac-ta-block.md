@@ -1027,18 +1027,20 @@ Trạng thái dự án hiện tại theo `flow resume`: planning đã qua `05-co
 
 ### 16.6. C-015 UI parity status
 
-The implementation now exposes the documented WhalesBot categories in the HTLAB Blockly toolbox:
-`Motion`, `Light Speaker`, `Sensor`, `Event`, `Loop`, `Logic`, `Math`, `Variable`,
+The line-following implementation now exposes these categories in the HTLAB Blockly toolbox:
+`Motion`, `Sensor`, `Event`, `Loop`, `Logic`, `Math`, `Variable`,
 `AI`, `Patrol line`, `My Blocks`, and `C Code`. Legacy simulator-specific
 `initialize` and `calibrate_grayscale` blocks remain loadable for existing
-projects and samples, but are not exposed as a toolbox category.
+projects and samples, but are not exposed as a toolbox category. `Light Speaker`
+blocks also remain loadable for existing projects and telemetry compatibility,
+but are hidden from the line-following toolbox.
 
 Current user-facing limitations:
 
 | Category | Status | Known limitation |
 | --- | --- | --- |
 | Motion | Implemented/stub mix | Differential-drive motor commands run; omni and encoder commands emit diagnostics. |
-| Light Speaker | Telemetry-only | Effects are recorded in runtime telemetry, not rendered as hardware devices. Hex color text is used where the Blockly color field plugin is unavailable. |
+| Light Speaker | Hidden/telemetry-only | Effects remain loadable for compatibility and are recorded in runtime telemetry, but the category is hidden from the line-following toolbox. |
 | Sensor | Implemented/stub mix | Grayscale/timer/encoder data is available; external sensors without a simulator model stay as stubs or value expressions. |
 | Event | Compatibility | Main event is an entry marker; async touch events emit diagnostics. |
 | Loop/Logic/Math | IR v2 | Core control-flow and expressions lower to IR v2; unsupported expression-as-statement cases emit diagnostics. |

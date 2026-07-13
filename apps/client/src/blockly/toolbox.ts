@@ -53,32 +53,6 @@ export const toolbox: any = {
     },
     {
       kind: "category",
-      name: "Light Speaker",
-      colour: "#5aa2ff",
-      contents: [
-        block("light_play_sound"),
-        block("light_electromagnet"),
-        block("light_emotion_expression"),
-        block("light_clear_emotion_expressions"),
-        block("light_emotion_symbols"),
-        block("light_emotion_customization"),
-        block("light_clear_emotion_screen"),
-        block("light_reading_1"),
-        block("light_led_rgb"),
-        block("light_led_swatch"),
-        block("light_led_off"),
-        block("light_digital_tube_display", {
-          inputs: { value: numberShadow(0) },
-        }),
-        block("light_clear_digital_tube"),
-        block("light_screen_display", {
-          inputs: { value: numberShadow(1) },
-        }),
-        block("light_clear_screen"),
-      ],
-    },
-    {
-      kind: "category",
       name: "Sensor",
       colour: "#8b5cf6",
       contents: [

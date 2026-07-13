@@ -225,7 +225,6 @@ LOOP_END(12)      END_PROGRAM(13)
 | Category | Status |
 |----------|--------|
 | Motion | Tank/single motor implemented where differential-drive physics exists; omni/encoder diagnostics |
-| Light Speaker | Telemetry-only effects and intentional `reading 1` stub |
 | Sensor | Grayscale/timer/encoder implemented; external hardware sensors preserved as expressions/stubs |
 | Event | Main entry marker plus touch-event diagnostic compatibility |
 | Loop | Repeat/wait/break/return flows lower to IR v2; while compatibility remains diagnostic |
@@ -239,6 +238,8 @@ LOOP_END(12)      END_PROGRAM(13)
 
 Legacy `initialize` and `calibrate_grayscale` blocks remain loadable for existing
 projects and samples, but are not exposed as a WhalesBot toolbox category.
+Legacy `Light Speaker` blocks also remain loadable for existing projects and
+telemetry compatibility, but are hidden from the line-following toolbox.
 
 ## Stack công nghệ
 
