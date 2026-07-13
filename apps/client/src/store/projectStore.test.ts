@@ -194,6 +194,17 @@ describe("projectStore C-013 save/load compatibility", () => {
     }
   });
 
+  it("renders Math random range as a compact field block", () => {
+    const workspace = new Blockly.Workspace();
+    const block = workspace.newBlock("math_random_range");
+
+    expect(block.outputConnection).not.toBeNull();
+    expect(block.getField("min")).not.toBeNull();
+    expect(block.getField("max")).not.toBeNull();
+    expect(block.getInput("MIN")).toBeNull();
+    expect(block.getInput("MAX")).toBeNull();
+  });
+
   it("preserves variable ids and custom-block definitions through save/load/regenerate", () => {
     const workspace = makeWorkspace();
     const xml = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(workspace));

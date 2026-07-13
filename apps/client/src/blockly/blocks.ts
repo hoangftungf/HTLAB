@@ -550,8 +550,8 @@ Blockly.Blocks["math_random_range"] = {
       type: "math_random_range",
       message0: "random %1 to %2",
       args0: [
-        { type: "input_value", name: "MIN", check: "Number" },
-        { type: "input_value", name: "MAX", check: "Number" },
+        { type: "field_number", name: "min", value: 0 },
+        { type: "field_number", name: "max", value: 10 },
       ],
       colour: BLOCK_COLOURS.values,
       output: "Number",
