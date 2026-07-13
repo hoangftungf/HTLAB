@@ -1,10 +1,12 @@
 import { createRNG, type RNG } from "../rng.js";
 import { type MotorEncoderPort, type Simulation, type TelemetryEventPayloadValue } from "../types.js";
+import { executeCCodePayload } from "./cSandbox.js";
 import {
   CompareOp,
   OpCode,
   type IRBooleanExpression,
   type IRCommandV2,
+  type IRCCodePayload,
   type IRDiagnostic,
   type IRFieldValue,
   type IRFunctionDefinition,
@@ -208,6 +210,17 @@ function createDiagnostic(
   severity: IRDiagnostic["severity"] = "warning",
 ): IRDiagnostic {
   return { code, severity, message, source };
+}
+
+function isCCodePayload(value: IRFieldValue | undefined): value is IRCCodePayload {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    "language" in value &&
+    value.language === "c" &&
+    "source" in value &&
+    "sandbox" in value,
+  );
 }
 
 export function createInterpreter(
@@ -515,6 +528,12 @@ function createV2Interpreter(
     });
   }
 
+  function pushDiagnostics(nextDiagnostics: IRDiagnostic[]): void {
+    for (const diagnostic of nextDiagnostics) {
+      pushDiagnostic(diagnostic);
+    }
+  }
+
   function payloadValue(value: IRFieldValue | undefined): TelemetryEventPayloadValue {
     if (value === undefined) return null;
     if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
@@ -711,9 +730,16 @@ function createV2Interpreter(
       case "call":
         return evalCall(expression.callee, expression.args, rng, expression.calleeId);
 
-      case "c-code":
-        pushDiagnostic(createDiagnostic("HTLAB_C_SANDBOX_REQUIRED", "C Code did not run because sandbox execution is not available."));
-        return 0;
+      case "c-code": {
+        const result = executeCCodePayload(
+          expression.payload,
+          evalNumber(expression.input ?? expression.payload.input ?? { kind: "literal", value: 0 }),
+          config.cSandbox,
+          { blockType: "c_code_function", category: "C Code" },
+        );
+        pushDiagnostics(result.diagnostics);
+        return result.ok ? result.value : 0;
+      }
     }
   }
 
@@ -1424,6 +1450,35 @@ function createV2Interpreter(
           invokeFunction(definition, commandCallArgs(command));
         } else {
           pushDiagnostic(createDiagnostic("HTLAB_UNKNOWN_CALL", `Unknown custom block ${callee}.`, command.source));
+        }
+        frame.index++;
+        return false;
+      }
+
+      case "cCode.call":
+      case "cCode.function": {
+        const payload = isCCodePayload(command.args.body)
+          ? command.args.body
+          : isCCodePayload(command.args.payload)
+            ? command.args.payload
+            : command.metadata.cCode;
+        if (!payload) {
+          pushDiagnostic(createDiagnostic("HTLAB_C_PAYLOAD_MISSING", "C Code command is missing a sandbox payload.", command.source, "error"));
+          frame.index++;
+          return false;
+        }
+        const result = executeCCodePayload(
+          payload,
+          numericArg(command, ["input", "arg0"], 0),
+          config.cSandbox,
+          command.source,
+        );
+        pushDiagnostics(result.diagnostics);
+        if (result.ok) {
+          recordEffect(command, "cCode.call result", {
+            entryPoint: payload.entryPoint ?? null,
+            result: result.value,
+          });
         }
         frame.index++;
         return false;

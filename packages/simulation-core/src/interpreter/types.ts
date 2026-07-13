@@ -93,7 +93,21 @@ export interface IRCCodePayload {
   language: "c";
   source: string;
   entryPoint?: string;
+  input?: IRValueExpression;
   sandbox: IRCCodeSandboxPolicy;
+}
+
+export interface CCodeSandboxConfig {
+  /** Off by default. The browser/client store keeps this false unless explicitly verified. */
+  enabled?: boolean;
+  /** Wall-clock timeout budget for the adapter. Defaults to the payload policy. */
+  timeoutMs?: number;
+  /** Structural memory budget in MB. Defaults to the payload policy. */
+  memoryMb?: number;
+  /** Maximum allowed C statements in the tiny subset interpreter. */
+  maxStatements?: number;
+  /** API calls allowed inside C expressions. Defaults to the payload policy whitelist. */
+  allowedApis?: string[];
 }
 
 export type IRValueType = "Number" | "Boolean" | "String" | "Any" | "Void";
@@ -117,7 +131,7 @@ export type IRValueExpression =
   | { kind: "unary"; op: string; arg: IRValueExpression; angleUnit?: "degree" | "radian" }
   | { kind: "binary"; op: string; left: IRValueExpression; right: IRValueExpression }
   | { kind: "call"; callee: string; args: IRValueExpression[]; calleeId?: string }
-  | { kind: "c-code"; payload: IRCCodePayload };
+  | { kind: "c-code"; payload: IRCCodePayload; input?: IRValueExpression };
 
 export type IRBooleanExpression =
   | { kind: "literal"; value: boolean }
@@ -223,4 +237,6 @@ export interface InterpreterConfig {
   randomSeed?: number;
   /** Max nested custom-block calls before a diagnostic stop. Defaults to 32. */
   maxCallDepth?: number;
+  /** C Code sandbox feature flag and resource limits. Disabled by default. */
+  cSandbox?: CCodeSandboxConfig;
 }

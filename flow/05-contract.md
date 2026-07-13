@@ -104,7 +104,16 @@ interface IRCCodePayload {
   language: "c";
   source: string;
   entryPoint?: string;
+  input?: IRValueExpression;
   sandbox: IRCCodeSandboxPolicy;
+}
+
+interface CCodeSandboxConfig {
+  enabled?: boolean;       // default false in UI/runtime
+  timeoutMs?: number;      // capped by payload sandbox.timeoutMs
+  memoryMb?: number;       // capped by payload sandbox.memoryMb
+  maxStatements?: number;  // tiny-subset execution guard
+  allowedApis?: string[];  // must be subset of payload sandbox.allowedApis
 }
 
 type IRValueExpression =
@@ -114,7 +123,7 @@ type IRValueExpression =
   | { kind: "unary"; op: string; arg: IRValueExpression; angleUnit?: "degree" | "radian" }
   | { kind: "binary"; op: string; left: IRValueExpression; right: IRValueExpression }
   | { kind: "call"; callee: string; args: IRValueExpression[] }
-  | { kind: "c-code"; payload: IRCCodePayload };
+  | { kind: "c-code"; payload: IRCCodePayload; input?: IRValueExpression };
 
 type IRBooleanExpression =
   | { kind: "literal"; value: boolean }
@@ -183,7 +192,9 @@ Compatibility and migration:
 - If a block cannot be lowered to v1, the v2 program must carry a diagnostic node with the source block type, handler id, and runtime status.
 - Intentional compatibility stubs are `patrol_start_button`, `light_reading_1`, and `sensor_remote_control_button`.
 - Math trig/inverse-trig nodes must include `angleUnit: "degree" | "radian"`.
-- `C Code` nodes must use `IRCCodePayload`; until sandbox execution ships, their sandbox policy is `status: "blocked"` and the command emits an error diagnostic instead of running.
+- `C Code` nodes must use `IRCCodePayload`; execution remains feature-flagged by `InterpreterConfig.cSandbox.enabled`.
+- When `cSandbox.enabled` is false or payload policy is `status: "blocked"`, C Code emits `HTLAB_C_SANDBOX_DISABLED` with runtime status `blocked-by-sandbox`.
+- C-014 sandbox execution is a strict tiny C subset adapter: one numeric function, one numeric parameter, arithmetic expressions, and whitelisted APIs only (`htlab_abs`, `htlab_clamp`). No DOM, localStorage, network, filesystem, arbitrary JS, pointer/array allocation, or arbitrary C library calls.
 
 ## Shared shapes
 

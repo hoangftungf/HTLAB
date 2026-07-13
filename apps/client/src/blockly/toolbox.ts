@@ -339,5 +339,19 @@ export const toolbox: any = {
         { kind: "block", type: "patrol_start_button" },
       ],
     },
+    {
+      kind: "category",
+      name: "C Code",
+      colour: "#ff7a2f",
+      contents: [
+        {
+          kind: "block",
+          type: "c_code_function",
+          inputs: {
+            ARG: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+          },
+        },
+      ],
+    },
   ],
 };

@@ -25,6 +25,7 @@ interface IRCCodePayloadLocal {
   language: "c";
   source: string;
   entryPoint?: string;
+  input?: IRValueExpressionLocal;
   sandbox: {
     required: true;
     status: "available" | "blocked";
@@ -55,7 +56,7 @@ type IRValueExpressionLocal =
   | { kind: "unary"; op: string; arg: IRValueExpressionLocal; angleUnit?: "degree" | "radian" }
   | { kind: "binary"; op: string; left: IRValueExpressionLocal; right: IRValueExpressionLocal }
   | { kind: "call"; callee: string; args: IRValueExpressionLocal[]; calleeId?: string }
-  | { kind: "c-code"; payload: IRCCodePayloadLocal };
+  | { kind: "c-code"; payload: IRCCodePayloadLocal; input?: IRValueExpressionLocal };
 
 type IRBooleanExpressionLocal =
   | { kind: "literal"; value: boolean }
@@ -233,6 +234,7 @@ const V2_ONLY_BLOCKS = new Set([
   "my_block_call_statement",
   "my_block_call_value",
   "my_block_param_value",
+  "c_code_function",
   "wait_seconds_v2",
 ]);
 
@@ -408,6 +410,7 @@ function categoryForType(type: string): string {
   if (type.startsWith("patrol_")) return "Patrol line";
   if (type.startsWith("light_")) return "Light Speaker";
   if (type.startsWith("my_block")) return "My Blocks";
+  if (type.startsWith("c_code")) return "C Code";
   if (type.startsWith("ai_")) return "AI";
   if (type.includes("motion") || type.includes("motor") || type.includes("turn") || type === "patrol_line") return "Movement";
   if (type.includes("sensor") || type.includes("line_position") || type.includes("remote")) return "Sensors";
@@ -575,6 +578,34 @@ function sensorValue(sensor: string, port?: string | number, channel?: number): 
     sensor,
     ...(port !== undefined ? { port } : {}),
     ...(channel !== undefined ? { channel } : {}),
+  };
+}
+
+function cIdentifier(value: string, fallback: string): string {
+  const trimmed = value.trim();
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(trimmed) ? trimmed : fallback;
+}
+
+function cCodePayloadForBlock(block: Blockly.Block, input?: IRValueExpressionLocal): IRCCodePayloadLocal {
+  const functionName = cIdentifier(fieldText(block, "functionName", "_fn"), "_fn");
+  const parameterName = cIdentifier(fieldText(block, "parameterName", "_number1"), "_number1");
+  const body = fieldText(block, "body", "return _number1;");
+  const source = /^\s*(int|double|float|void)\s+[A-Za-z_][A-Za-z0-9_]*\s*\(/.test(body)
+    ? body
+    : `int ${functionName}(int ${parameterName}) { ${body} }`;
+
+  return {
+    language: "c",
+    source,
+    entryPoint: functionName,
+    ...(input ? { input } : {}),
+    sandbox: {
+      required: true,
+      status: "available",
+      timeoutMs: 50,
+      memoryMb: 4,
+      allowedApis: ["htlab_abs", "htlab_clamp"],
+    },
   };
 }
 
@@ -869,6 +900,11 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
     case "my_block_param_value": {
       const name = fieldText(block, "PARAM", "value");
       return { kind: "variable", name, id: `param:${name}` };
+    }
+
+    case "c_code_function": {
+      const input = valueFromInput(block, "ARG", 0);
+      return { kind: "c-code", payload: cCodePayloadForBlock(block, input), input };
     }
 
     default:
@@ -1543,6 +1579,21 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           arg0: valueFromInput(block, "ARG0", 0),
         }),
       ];
+
+    case "c_code_function": {
+      const input = valueFromInput(block, "ARG", 0);
+      const payload = cCodePayloadForBlock(block, input);
+      return [
+        commandNode(
+          block,
+          "cCode.call",
+          { body: payload, input },
+          undefined,
+          "implemented",
+          "runtime.cSandbox.call",
+        ),
+      ];
+    }
 
     case "read_sensor_road":
     case "sensor_group_detected":

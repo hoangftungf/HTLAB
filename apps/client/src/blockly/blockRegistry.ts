@@ -1379,13 +1379,14 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     fields: [
       field("functionName", "text", "_fn", { required: true }),
       field("parameterName", "text", "_number1"),
-      field("body", "textarea", "return;", { required: true }),
+      field("arg", "value-input", 0),
+      field("body", "textarea", "return _number1 + 1;", { required: true }),
     ],
     runtimeStatus: "blocked-by-sandbox",
     generatorHandlerId: "cCode.functionDefinition",
-    runtimeHandlerId: "runtime.diagnostic.cSandboxRequired",
-    irV2Op: "cCode.function",
-    notes: "Target is real sandboxed C execution; until the sandbox exists this emits a diagnostic.",
+    runtimeHandlerId: "runtime.cSandbox.call",
+    irV2Op: "cCode.call",
+    notes: "Security-class: uses the C sandbox adapter and remains disabled unless the runtime feature flag is enabled.",
   }),
 ] as const satisfies readonly BlockRegistryEntry[];
 

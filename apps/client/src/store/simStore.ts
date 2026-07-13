@@ -233,7 +233,7 @@ export const useSimStore = create<SimStore>((set, get) => ({
       // Tạo lại interpreter nếu chương trình đang active
       const prog = get().irProgram;
       if (prog) {
-        const newInterp = createInterpreter(prog, sim);
+        const newInterp = createInterpreter(prog, sim, { cSandbox: { enabled: false } });
         set({ interpreter: newInterp });
       }
     } else if (mode === "replay" && replaySim) {
@@ -257,7 +257,7 @@ export const useSimStore = create<SimStore>((set, get) => ({
 
     sim.reset();
     try {
-      const interp = createInterpreter(program, sim);
+      const interp = createInterpreter(program, sim, { cSandbox: { enabled: false } });
       set({
         interpreter: interp,
         irProgram: program,
