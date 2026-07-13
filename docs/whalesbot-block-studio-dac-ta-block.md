@@ -1029,8 +1029,9 @@ Trạng thái dự án hiện tại theo `flow resume`: planning đã qua `05-co
 
 The implementation now exposes the documented WhalesBot categories in the HTLAB Blockly toolbox:
 `Motion`, `Light Speaker`, `Sensor`, `Event`, `Loop`, `Logic`, `Math`, `Variable`,
-`AI`, `Patrol line`, `My Blocks`, and `C Code`. HTLAB also keeps a `Hardware`
-category for simulator-specific `initialize` and `calibrate_grayscale` blocks.
+`AI`, `Patrol line`, `My Blocks`, and `C Code`. Legacy simulator-specific
+`initialize` and `calibrate_grayscale` blocks remain loadable for existing
+projects and samples, but are not exposed as a toolbox category.
 
 Current user-facing limitations:
 

@@ -224,7 +224,6 @@ LOOP_END(12)      END_PROGRAM(13)
 
 | Category | Status |
 |----------|--------|
-| Hardware | HTLAB legacy simulator setup blocks |
 | Motion | Tank/single motor implemented where differential-drive physics exists; omni/encoder diagnostics |
 | Light Speaker | Telemetry-only effects and intentional `reading 1` stub |
 | Sensor | Grayscale/timer/encoder implemented; external hardware sensors preserved as expressions/stubs |
@@ -237,6 +236,9 @@ LOOP_END(12)      END_PROGRAM(13)
 | Patrol line | Tank line-following route blocks implemented; omni/encoder variants diagnostic |
 | My Blocks | One-parameter custom block definitions/calls execute through IR v2 |
 | C Code | Tiny C-subset payloads generated; client sandbox remains disabled by default |
+
+Legacy `initialize` and `calibrate_grayscale` blocks remain loadable for existing
+projects and samples, but are not exposed as a WhalesBot toolbox category.
 
 ## Stack công nghệ
 

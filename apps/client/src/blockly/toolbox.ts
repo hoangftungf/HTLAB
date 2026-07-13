@@ -2,8 +2,7 @@
  * Blockly toolbox configuration.
  *
  * The WhalesBot registry is the canonical source for documented blocks. This
- * file keeps the user-facing category order aligned with that registry while
- * retaining the legacy HTLAB hardware blocks used by the simulator samples.
+ * file keeps the user-facing category order aligned with that registry.
  */
 
 type ToolboxBlock = {
@@ -29,15 +28,6 @@ const block = (
 export const toolbox: any = {
   kind: "categoryToolbox",
   contents: [
-    {
-      kind: "category",
-      name: "Hardware",
-      colour: "#5b7cff",
-      contents: [
-        block("initialize"),
-        block("calibrate_grayscale"),
-      ],
-    },
     {
       kind: "category",
       name: "Motion",

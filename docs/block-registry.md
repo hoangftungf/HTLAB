@@ -21,8 +21,9 @@ Compatibility decisions from `docs/whalesbot-block-studio-dac-ta-block.md` secti
 
 The Blockly toolbox now exposes every documented registry category:
 `Motion`, `Light Speaker`, `Sensor`, `Event`, `Loop`, `Logic`, `Math`,
-`Variable`, `AI`, `Patrol line`, `My Blocks`, and `C Code`. The app also keeps
-the legacy `Hardware` category for `initialize` and `calibrate_grayscale`.
+`Variable`, `AI`, `Patrol line`, `My Blocks`, and `C Code`. Legacy
+`initialize` and `calibrate_grayscale` blocks remain loadable for existing
+projects and samples, but are not exposed as a toolbox category.
 
 | Category | Toolbox status | Runtime status and limitation |
 | --- | --- | --- |

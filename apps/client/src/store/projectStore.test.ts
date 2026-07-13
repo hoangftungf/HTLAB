@@ -63,6 +63,17 @@ function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem
   return blocks;
 }
 
+function collectToolboxCategoryNames(items: readonly ToolboxItem[]): string[] {
+  return items
+    .filter((item) => item.kind === "category")
+    .map((item) => {
+      if (!("name" in item) || typeof item.name !== "string") {
+        throw new Error("Toolbox category is missing a name");
+      }
+      return item.name;
+    });
+}
+
 function makeWorkspace(): Blockly.Workspace {
   const workspace = new Blockly.Workspace();
   workspace.createVariable("speed", "Number", "var-speed");
@@ -220,6 +231,26 @@ describe("projectStore C-013 save/load compatibility", () => {
     expect(block.getField("max")).not.toBeNull();
     expect(block.getInput("MIN")).toBeNull();
     expect(block.getInput("MAX")).toBeNull();
+  });
+
+  it("matches WhalesBot category set without legacy Hardware", () => {
+    const categories = collectToolboxCategoryNames((toolbox as { contents: ToolboxItem[] }).contents);
+
+    expect(categories).toEqual([
+      "Motion",
+      "Light Speaker",
+      "Sensor",
+      "Event",
+      "Loop",
+      "Logic",
+      "Math",
+      "Variable",
+      "AI",
+      "Patrol line",
+      "My Blocks",
+      "C Code",
+    ]);
+    expect(categories).not.toContain("Hardware");
   });
 
   it("keeps toolbox input and field names aligned with block definitions", () => {
