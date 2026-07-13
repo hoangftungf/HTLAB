@@ -134,9 +134,8 @@ export const toolbox: any = {
     {
       kind: "category",
       name: "Math",
-      colour: "#f2c94c",
+      colour: "#5AE05A",
       contents: [
-        block("value_number"),
         block("math_add", {
           inputs: { left: numberShadow(10), right: numberShadow(10) },
         }),
@@ -147,27 +146,12 @@ export const toolbox: any = {
           inputs: { left: numberShadow(10), right: numberShadow(10) },
         }),
         block("math_divide", {
-          inputs: { left: numberShadow(10), right: numberShadow(2) },
+          inputs: { left: numberShadow(10), right: numberShadow(10) },
         }),
         block("math_random_range", numberInputs({ min: 0, max: 10 })),
-        block("math_modulo", {
-          inputs: { a: numberShadow(5), b: numberShadow(2) },
-        }),
-        block("math_round", {
-          inputs: { value: numberShadow(1.5) },
-        }),
-        block("math_unary_function", {
-          inputs: { value: numberShadow(90) },
-        }),
-        block("math_binary", {
-          inputs: { A: numberShadow(1), B: numberShadow(1) },
-        }),
-        block("math_remainder", {
-          inputs: { A: numberShadow(5), B: numberShadow(2) },
-        }),
-        block("math_unary", {
-          inputs: { ARG: numberShadow(90) },
-        }),
+        block("math_modulo"),
+        block("math_round"),
+        block("math_unary_function"),
       ],
     },
     {

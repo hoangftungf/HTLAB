@@ -26,7 +26,7 @@ const BLOCK_COLOURS = {
   event: "#12cfc0",
   loop: "#ffad33",
   logic: "#24bdf2",
-  values: "#f2c94c",
+  values: "#5AE05A",
   variables: "#d6b51d",
   ai: "#6574ff",
   patrolLine: "#ff7a2f",
@@ -35,6 +35,23 @@ const BLOCK_COLOURS = {
 } as const;
 
 const numberInput = (name: string): Record<string, unknown> => ({ type: "input_value", name, check: "Number" });
+
+const mathUnaryFunctionOptions = [
+  ["abs", "abs"],
+  ["floor", "floor"],
+  ["ceiling", "ceiling"],
+  ["sqrt", "sqrt"],
+  ["sin", "sin"],
+  ["cos", "cos"],
+  ["tan", "tan"],
+  ["asin", "asin"],
+  ["acos", "acos"],
+  ["atan", "atan"],
+  ["ln", "ln"],
+  ["log", "log"],
+  ["e^", "e^"],
+  ["10^", "10^"],
+];
 
 // ---- Phần cứng ----
 
@@ -431,6 +448,74 @@ Blockly.Blocks["value_line_position"] = {
   },
 };
 
+Blockly.Blocks["math_add"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_add",
+      message0: "%1 + %2",
+      args0: [
+        numberInput("left"),
+        numberInput("right"),
+      ],
+      inputsInline: true,
+      colour: BLOCK_COLOURS.values,
+      output: "Number",
+      tooltip: "Add two numeric values",
+    });
+  },
+};
+
+Blockly.Blocks["math_subtract"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_subtract",
+      message0: "%1 - %2",
+      args0: [
+        numberInput("left"),
+        numberInput("right"),
+      ],
+      inputsInline: true,
+      colour: BLOCK_COLOURS.values,
+      output: "Number",
+      tooltip: "Subtract two numeric values",
+    });
+  },
+};
+
+Blockly.Blocks["math_multiply"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_multiply",
+      message0: "%1 x %2",
+      args0: [
+        numberInput("left"),
+        numberInput("right"),
+      ],
+      inputsInline: true,
+      colour: BLOCK_COLOURS.values,
+      output: "Number",
+      tooltip: "Multiply two numeric values",
+    });
+  },
+};
+
+Blockly.Blocks["math_divide"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_divide",
+      message0: "%1 / %2",
+      args0: [
+        numberInput("left"),
+        numberInput("right"),
+      ],
+      inputsInline: true,
+      colour: BLOCK_COLOURS.values,
+      output: "Number",
+      tooltip: "Divide two numeric values",
+    });
+  },
+};
+
 Blockly.Blocks["math_binary"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
@@ -497,11 +582,12 @@ Blockly.Blocks["math_random_range"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "math_random_range",
-      message0: "random %1 to %2",
+      message0: "pick random from %1 to %2",
       args0: [
         numberInput("min"),
         numberInput("max"),
       ],
+      inputsInline: true,
       colour: BLOCK_COLOURS.values,
       output: "Number",
       tooltip: "Deterministic random integer in range",
@@ -513,10 +599,10 @@ Blockly.Blocks["math_modulo"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "math_modulo",
-      message0: "remainder of %1 by %2",
+      message0: "the remainder of dividing %1 by %2",
       args0: [
-        { type: "input_value", name: "a", check: "Number" },
-        { type: "input_value", name: "b", check: "Number" },
+        numberInput("a"),
+        numberInput("b"),
       ],
       inputsInline: true,
       colour: BLOCK_COLOURS.values,
@@ -531,10 +617,32 @@ Blockly.Blocks["math_round"] = {
     this.jsonInit({
       type: "math_round",
       message0: "round %1",
-      args0: [{ type: "input_value", name: "value", check: "Number" }],
+      args0: [numberInput("value")],
+      inputsInline: true,
       colour: BLOCK_COLOURS.values,
       output: "Number",
       tooltip: "Round a numeric value",
+    });
+  },
+};
+
+Blockly.Blocks["math_unary_function"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "math_unary_function",
+      message0: "%1 %2",
+      args0: [
+        {
+          type: "field_dropdown",
+          name: "op",
+          options: mathUnaryFunctionOptions,
+        },
+        numberInput("value"),
+      ],
+      inputsInline: true,
+      colour: BLOCK_COLOURS.values,
+      output: "Number",
+      tooltip: "Apply a numeric function",
     });
   },
 };

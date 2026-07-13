@@ -56,6 +56,7 @@ function connectNext(parent: Blockly.Block, child: Blockly.Block): void {
 type ToolboxItem = {
   kind: string;
   name?: string;
+  colour?: string;
   type?: string;
   inputs?: Record<string, unknown>;
   fields?: Record<string, unknown>;
@@ -192,6 +193,30 @@ const EXPECTED_LOGIC_BLOCK_TEXT: Record<typeof EXPECTED_LOGIC_TOOLBOX_TYPES[numb
   logic_and: "and",
   logic_or: "or",
   logic_not: "not",
+};
+
+const MATH_BLOCK_COLOUR = "#5AE05A";
+
+const EXPECTED_MATH_TOOLBOX_TYPES = [
+  "math_add",
+  "math_subtract",
+  "math_multiply",
+  "math_divide",
+  "math_random_range",
+  "math_modulo",
+  "math_round",
+  "math_unary_function",
+] as const;
+
+const EXPECTED_MATH_BLOCK_TEXT: Record<typeof EXPECTED_MATH_TOOLBOX_TYPES[number], string> = {
+  math_add: "+",
+  math_subtract: "-",
+  math_multiply: "x",
+  math_divide: "/",
+  math_random_range: "pick random from to",
+  math_modulo: "the remainder of dividing by",
+  math_round: "round",
+  math_unary_function: "abs",
 };
 
 function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem[] = []): ToolboxItem[] {
@@ -687,6 +712,85 @@ describe("projectStore C-013 save/load compatibility", () => {
     const notBlock = workspace.newBlock("logic_not");
     expect(notBlock.outputConnection?.getCheck()).toEqual(["Boolean"]);
     expect(notBlock.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);
+  });
+
+  it("matches WhalesBot Math toolbox order, visible block text, and colour", () => {
+    const workspace = new Blockly.Workspace();
+    const mathCategory = findToolboxCategory((toolbox as { contents: ToolboxItem[] }).contents, "Math");
+    const mathTypes = (mathCategory.contents ?? [])
+      .filter((item) => item.kind === "block")
+      .map((item) => item.type);
+    const registryMathTypes = WHALESBOT_BLOCK_REGISTRY
+      .filter((entry) => entry.category === "Math")
+      .map((entry) => entry.type);
+
+    expect(mathCategory.colour).toBe(MATH_BLOCK_COLOUR);
+    expect(mathTypes).toEqual([...EXPECTED_MATH_TOOLBOX_TYPES]);
+    expect(mathTypes).toEqual(registryMathTypes);
+
+    const toolboxBlocksByType = new Map(
+      (mathCategory.contents ?? [])
+        .filter((item) => item.kind === "block" && item.type)
+        .map((item) => [item.type, item]),
+    );
+    expect(shadowNumber(toolboxBlocksByType.get("math_add")!, "left")).toBe(10);
+    expect(shadowNumber(toolboxBlocksByType.get("math_add")!, "right")).toBe(10);
+    expect(shadowNumber(toolboxBlocksByType.get("math_divide")!, "right")).toBe(10);
+    expect(shadowNumber(toolboxBlocksByType.get("math_random_range")!, "min")).toBe(0);
+    expect(shadowNumber(toolboxBlocksByType.get("math_random_range")!, "max")).toBe(10);
+    expect(toolboxBlocksByType.get("math_modulo")?.inputs).toBeUndefined();
+    expect(toolboxBlocksByType.get("math_round")?.inputs).toBeUndefined();
+    expect(toolboxBlocksByType.get("math_unary_function")?.inputs).toBeUndefined();
+
+    for (const type of EXPECTED_MATH_TOOLBOX_TYPES) {
+      const block = workspace.newBlock(type);
+      expect(visibleBlockText(block), type).toBe(EXPECTED_MATH_BLOCK_TEXT[type]);
+      expect(block.outputConnection?.getCheck(), type).toEqual(["Number"]);
+      expect(block.previousConnection, type).toBeNull();
+      expect(block.nextConnection, type).toBeNull();
+      expect(block.getColour().toLowerCase(), type).toBe(MATH_BLOCK_COLOUR.toLowerCase());
+    }
+  });
+
+  it("matches WhalesBot Math reporter input shapes", () => {
+    const workspace = new Blockly.Workspace();
+
+    for (const type of ["math_add", "math_subtract", "math_multiply", "math_divide"]) {
+      const block = workspace.newBlock(type);
+      expect(block.getInput("left")?.connection?.getCheck(), `${type}.left`).toEqual(["Number"]);
+      expect(block.getInput("right")?.connection?.getCheck(), `${type}.right`).toEqual(["Number"]);
+    }
+
+    const random = workspace.newBlock("math_random_range");
+    expect(random.getInput("min")?.connection?.getCheck()).toEqual(["Number"]);
+    expect(random.getInput("max")?.connection?.getCheck()).toEqual(["Number"]);
+
+    const modulo = workspace.newBlock("math_modulo");
+    expect(modulo.getInput("a")?.connection?.getCheck()).toEqual(["Number"]);
+    expect(modulo.getInput("b")?.connection?.getCheck()).toEqual(["Number"]);
+
+    const round = workspace.newBlock("math_round");
+    expect(round.getInput("value")?.connection?.getCheck()).toEqual(["Number"]);
+
+    const unary = workspace.newBlock("math_unary_function");
+    expect(dropdownValues(unary.getField("op"))).toEqual([
+      "abs",
+      "floor",
+      "ceiling",
+      "sqrt",
+      "sin",
+      "cos",
+      "tan",
+      "asin",
+      "acos",
+      "atan",
+      "ln",
+      "log",
+      "e^",
+      "10^",
+    ]);
+    expect(unary.getInput("value")?.connection?.getCheck()).toEqual(["Number"]);
+    expect(unary.getField("angleUnit")).toBeNull();
   });
 
   it("keeps toolbox input and field names aligned with block definitions", () => {
