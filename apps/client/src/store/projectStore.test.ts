@@ -456,7 +456,7 @@ describe("projectStore C-013 save/load compatibility", () => {
     }
   });
 
-  it("marks numeric Blockly fields as oval and dropdown fields as rectangular", () => {
+  it("marks numeric Blockly fields as pill inputs and dropdown fields as rectangular", () => {
     class FieldNumber {
       constructor(private readonly root: SVGGElement) {}
       getSvgRoot(): SVGGElement {
@@ -474,8 +474,8 @@ describe("projectStore C-013 save/load compatibility", () => {
     const numberField = makeSvgFieldRoot();
     applyWhalesBotFieldShapeClass(new FieldNumber(numberField.root));
     expect(numberField.root.classList.contains(WHALESBOT_NUMBER_FIELD_CLASS)).toBe(true);
-    expect(numberField.rect.getAttribute("rx")).toBe("999");
-    expect(numberField.rect.getAttribute("ry")).toBe("999");
+    expect(numberField.rect.getAttribute("rx")).toBe("8");
+    expect(numberField.rect.getAttribute("ry")).toBe("8");
 
     const dropdownField = makeSvgFieldRoot();
     applyWhalesBotFieldShapeClass(new FieldDropdown(dropdownField.root));

@@ -3,7 +3,7 @@ import * as Blockly from "blockly";
 export const WHALESBOT_NUMBER_FIELD_CLASS = "htlab-field-number";
 export const WHALESBOT_DROPDOWN_FIELD_CLASS = "htlab-field-dropdown";
 
-const NUMBER_FIELD_RADIUS = "999";
+const NUMBER_FIELD_RADIUS = "8";
 const DROPDOWN_FIELD_RADIUS = "4";
 
 type FieldConstructor = new (...args: any[]) => Blockly.Field;
