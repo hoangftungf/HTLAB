@@ -79,7 +79,7 @@ function Gauge({ value, min, max, label }: { value: number; min: number; max: nu
 export default function TelemetryPanel({ state, tick }: TelemetryPanelProps) {
   if (!state) {
     return (
-      <div className="w-72 bg-surface border-l border-gray-700 p-4 text-sm text-gray-400">
+      <div className="h-full w-full bg-surface p-4 text-sm text-gray-400">
         No simulation loaded
       </div>
     );
@@ -88,7 +88,7 @@ export default function TelemetryPanel({ state, tick }: TelemetryPanelProps) {
   const { robot, sensors } = state;
 
   return (
-    <div className="w-72 bg-surface border-l border-gray-700 p-4 text-sm overflow-y-auto flex flex-col gap-4">
+    <div className="flex h-full w-full flex-col gap-4 overflow-y-auto bg-surface p-4 text-sm">
       {/* Tick hiện tại */}
       <div className="text-xs text-gray-500 font-mono">
         Tick <span className="text-gray-300">{tick}</span>

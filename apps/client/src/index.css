@@ -8,3 +8,33 @@ html, body, #root {
   height: 100%;
   overflow: hidden;
 }
+
+.pane-splitter {
+  position: relative;
+  width: 8px;
+  flex: 0 0 8px;
+  cursor: col-resize;
+  background: #0f0f23;
+  touch-action: none;
+}
+
+.pane-splitter::after {
+  content: "";
+  position: absolute;
+  inset: 0 3px;
+  background: rgba(75, 85, 99, 0.65);
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.pane-splitter:hover::after,
+.pane-splitter:focus-visible::after,
+.is-resizing-pane .pane-splitter::after {
+  opacity: 1;
+  background: rgba(233, 69, 96, 0.85);
+}
+
+.is-resizing-pane {
+  cursor: col-resize;
+  user-select: none;
+}

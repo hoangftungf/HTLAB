@@ -8,7 +8,38 @@ import BlocklyEditor from "./blockly/BlocklyEditor.js";
 import ProjectManager from "./components/ProjectManager.js";
 import type { IRProgram } from "@htlab/simulation-core";
 
+const LEFT_PANE_STORAGE_KEY = "htlab:leftPaneWidth";
+const RIGHT_PANE_STORAGE_KEY = "htlab:rightPaneWidth";
+const TELEMETRY_STORAGE_KEY = "htlab:telemetryOpen";
+
+const DEFAULT_LEFT_PANE_WIDTH = 560;
+const DEFAULT_RIGHT_PANE_WIDTH = 300;
+const MIN_LEFT_PANE_WIDTH = 420;
+const MAX_LEFT_PANE_WIDTH = 820;
+const MIN_RIGHT_PANE_WIDTH = 260;
+const MAX_RIGHT_PANE_WIDTH = 420;
+const MIN_SIMULATION_WIDTH = 360;
+const SPLITTER_WIDTH = 8;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function readStoredNumber(key: string, fallback: number): number {
+  if (typeof window === "undefined") return fallback;
+  const value = Number(window.localStorage.getItem(key));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function readStoredBoolean(key: string, fallback: boolean): boolean {
+  if (typeof window === "undefined") return fallback;
+  const value = window.localStorage.getItem(key);
+  if (value === null) return fallback;
+  return value === "true";
+}
+
 export default function App() {
+  const layoutRef = useRef<HTMLDivElement>(null);
   const init = useSimStore((s) => s.init);
   const sim = useSimStore((s) => s.sim);
   const mapData = useSimStore((s) => s.mapData);
@@ -22,6 +53,15 @@ export default function App() {
   const clearError = useSimStore((s) => s.clearError);
 
   const [irOutput, setIrOutput] = useState<IRProgram | null>(null);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(() =>
+    readStoredNumber(LEFT_PANE_STORAGE_KEY, DEFAULT_LEFT_PANE_WIDTH),
+  );
+  const [rightPaneWidth, setRightPaneWidth] = useState(() =>
+    readStoredNumber(RIGHT_PANE_STORAGE_KEY, DEFAULT_RIGHT_PANE_WIDTH),
+  );
+  const [telemetryOpen, setTelemetryOpen] = useState(() =>
+    readStoredBoolean(TELEMETRY_STORAGE_KEY, true),
+  );
 
   // Khởi tạo mô phỏng khi component được gắn
   useEffect(() => {
@@ -57,8 +97,104 @@ export default function App() {
     runProgram(irOutput);
   }, [irOutput, runProgram]);
 
+  const constrainLeftPaneWidth = useCallback(
+    (nextWidth: number) => {
+      const layoutWidth = layoutRef.current?.clientWidth ?? window.innerWidth;
+      const activeRightWidth = telemetryOpen ? rightPaneWidth + SPLITTER_WIDTH : 0;
+      const maxFromViewport =
+        layoutWidth - activeRightWidth - MIN_SIMULATION_WIDTH - SPLITTER_WIDTH;
+      const maxWidth = Math.max(
+        MIN_LEFT_PANE_WIDTH,
+        Math.min(MAX_LEFT_PANE_WIDTH, maxFromViewport),
+      );
+
+      return clamp(nextWidth, MIN_LEFT_PANE_WIDTH, maxWidth);
+    },
+    [rightPaneWidth, telemetryOpen],
+  );
+
+  const constrainRightPaneWidth = useCallback(
+    (nextWidth: number) => {
+      const layoutWidth = layoutRef.current?.clientWidth ?? window.innerWidth;
+      const maxFromViewport =
+        layoutWidth - leftPaneWidth - MIN_SIMULATION_WIDTH - SPLITTER_WIDTH * 2;
+      const maxWidth = Math.max(
+        MIN_RIGHT_PANE_WIDTH,
+        Math.min(MAX_RIGHT_PANE_WIDTH, maxFromViewport),
+      );
+
+      return clamp(nextWidth, MIN_RIGHT_PANE_WIDTH, maxWidth);
+    },
+    [leftPaneWidth],
+  );
+
+  const beginPaneResize = useCallback(
+    (side: "left" | "right", event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+
+      const startX = event.clientX;
+      const startLeftWidth = leftPaneWidth;
+      const startRightWidth = rightPaneWidth;
+
+      document.body.classList.add("is-resizing-pane");
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        const deltaX = moveEvent.clientX - startX;
+
+        if (side === "left") {
+          setLeftPaneWidth(constrainLeftPaneWidth(startLeftWidth + deltaX));
+          return;
+        }
+
+        setRightPaneWidth(constrainRightPaneWidth(startRightWidth - deltaX));
+      };
+
+      const stopResize = () => {
+        document.body.classList.remove("is-resizing-pane");
+        document.removeEventListener("pointermove", handlePointerMove);
+        document.removeEventListener("pointerup", stopResize);
+        document.removeEventListener("pointercancel", stopResize);
+      };
+
+      document.addEventListener("pointermove", handlePointerMove);
+      document.addEventListener("pointerup", stopResize, { once: true });
+      document.addEventListener("pointercancel", stopResize, { once: true });
+    },
+    [
+      constrainLeftPaneWidth,
+      constrainRightPaneWidth,
+      leftPaneWidth,
+      rightPaneWidth,
+    ],
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem(LEFT_PANE_STORAGE_KEY, String(Math.round(leftPaneWidth)));
+  }, [leftPaneWidth]);
+
+  useEffect(() => {
+    window.localStorage.setItem(RIGHT_PANE_STORAGE_KEY, String(Math.round(rightPaneWidth)));
+  }, [rightPaneWidth]);
+
+  useEffect(() => {
+    window.localStorage.setItem(TELEMETRY_STORAGE_KEY, String(telemetryOpen));
+  }, [telemetryOpen]);
+
+  useEffect(() => {
+    const layout = layoutRef.current;
+    if (!layout) return;
+
+    const observer = new ResizeObserver(() => {
+      setLeftPaneWidth((current) => constrainLeftPaneWidth(current));
+      setRightPaneWidth((current) => constrainRightPaneWidth(current));
+    });
+
+    observer.observe(layout);
+    return () => observer.disconnect();
+  }, [constrainLeftPaneWidth, constrainRightPaneWidth]);
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex h-screen flex-col">
       <Controls />
       <ReplayControls />
 
@@ -85,20 +221,31 @@ export default function App() {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div ref={layoutRef} className="flex min-h-0 flex-1 overflow-hidden">
         {/* Trái: Blockly Editor */}
-        <div className="w-80 flex flex-col border-r border-gray-700 flex-shrink-0">
+        <div
+          className="flex min-w-0 flex-col border-r border-gray-700 bg-surface"
+          style={{ flex: `0 0 ${leftPaneWidth}px` }}
+        >
           <ProjectManager
             onLoadWorkspace={loadWorkspaceXml}
             onGetWorkspaceXml={getWorkspaceXml}
           />
-          <div className="flex-1 blockly-workspace-container">
+          <div className="blockly-workspace-container min-h-0 flex-1 overflow-hidden">
             <BlocklyEditor onIRGenerated={handleIRGenerated} />
           </div>
         </div>
 
         {/* Giữa: Simulation View */}
-        <div className="flex-1 flex flex-col">
+        <div
+          role="separator"
+          aria-label="Resize Blockly editor"
+          aria-orientation="vertical"
+          className="pane-splitter"
+          onPointerDown={(event) => beginPaneResize("left", event)}
+        />
+
+        <div className="relative flex min-w-0 flex-1 flex-col">
           <SimulationView sim={activeSim} mapData={mapData} running={running} />
 
           {/* Thanh trạng thái kết quả IR */}
@@ -116,10 +263,43 @@ export default function App() {
               </button>
             </div>
           )}
+
+          {!telemetryOpen && (
+            <button
+              onClick={() => setTelemetryOpen(true)}
+              className="absolute right-4 top-4 z-10 rounded bg-gray-700 px-3 py-1.5 text-xs text-gray-200 shadow hover:bg-gray-600"
+              title="Show telemetry panel"
+            >
+              Telemetry
+            </button>
+          )}
         </div>
 
         {/* Phải: Telemetry */}
-        <TelemetryPanel state={activeSim?.state ?? null} tick={tick} />
+        {telemetryOpen && (
+          <>
+            <div
+              role="separator"
+              aria-label="Resize telemetry panel"
+              aria-orientation="vertical"
+              className="pane-splitter"
+              onPointerDown={(event) => beginPaneResize("right", event)}
+            />
+            <div
+              className="relative min-w-0 border-l border-gray-700 bg-surface"
+              style={{ flex: `0 0 ${rightPaneWidth}px` }}
+            >
+              <button
+                onClick={() => setTelemetryOpen(false)}
+                className="absolute right-2 top-2 z-10 rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-600"
+                title="Hide telemetry panel"
+              >
+                Hide
+              </button>
+              <TelemetryPanel state={activeSim?.state ?? null} tick={tick} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
