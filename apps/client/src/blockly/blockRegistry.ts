@@ -73,7 +73,8 @@ const PORTS = ["1", "2", "3", "4", "5"] as const;
 const STEERING_IDS = ["1", "2", "3", "4", "5", "6", "7", "8"] as const;
 const DIRECTIONS = ["Forward", "Backward"] as const;
 const TURN_DIRECTIONS = ["Turn left", "Turn right"] as const;
-const BRANCHES = ["left", "middle", "right", "T/Cross intersection"] as const;
+const PATROL_INTERSECTION_BRANCHES = ["left", "right", "T/Cross intersection"] as const;
+const PATROL_TURN_BRANCHES = ["left", "middle", "right"] as const;
 const COMPARE_OPS = ["<", ">", "=", "!=", "<=", ">="] as const;
 const GRAYSCALE_DETECTED_VALUES = ["black", "white"] as const;
 const ANGLE_UNITS = ["degree", "radian"] as const;
@@ -853,7 +854,7 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     displayText: "patrol line intersections left patrol line speed 30 rush through intersection time 0",
     kind: "statement",
     fields: [
-      field("branch", "dropdown", "left", { values: BRANCHES }),
+        field("branch", "dropdown", "left", { values: PATROL_INTERSECTION_BRANCHES }),
       field("speed", "number", 30, { min: 0, max: 100 }),
       field("rushSeconds", "number", 0, { min: 0, unit: "seconds" }),
     ],
@@ -868,7 +869,7 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     displayText: "turn middle left motor speed 0 right motor speed 0",
     kind: "statement",
     fields: [
-      field("branch", "dropdown", "middle", { values: BRANCHES }),
+        field("branch", "dropdown", "middle", { values: PATROL_TURN_BRANCHES }),
       field("leftSpeed", "number", 0, { min: -100, max: 100 }),
       field("rightSpeed", "number", 0, { min: -100, max: 100 }),
     ],

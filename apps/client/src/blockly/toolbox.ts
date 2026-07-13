@@ -73,11 +73,14 @@ function createValueInput(name: string, value: number): Element {
   return input;
 }
 
-function createVariableBlocks(variable: { getId(): string; name: string; type: string }): Element[] {
+function createVariableReporterBlock(variable: { getId(): string; name: string; type: string }): Element {
   const reporter = createXmlElement("block");
   reporter.setAttribute("type", "value_variable");
   reporter.appendChild(createFieldVariable(variable));
+  return reporter;
+}
 
+function createVariableActionBlocks(variable: { getId(): string; name: string; type: string }): Element[] {
   const setBlock = createXmlElement("block");
   setBlock.setAttribute("type", "set_var_v2");
   setBlock.setAttribute("inline", "true");
@@ -90,16 +93,17 @@ function createVariableBlocks(variable: { getId(): string; name: string; type: s
   changeBlock.appendChild(createFieldVariable(variable));
   changeBlock.appendChild(createValueInput("DELTA", 1));
 
-  return [reporter, setBlock, changeBlock];
+  return [setBlock, changeBlock];
 }
 
 export function variableToolboxFlyout(workspace: any): Element[] {
   const mainWorkspace = workspace.isFlyout ? workspace.targetWorkspace ?? workspace : workspace;
-  const variables = mainWorkspace.getAllVariables?.() ?? [];
   const flyoutItems: Element[] = [createVariableButton()];
+  const variables = mainWorkspace.getAllVariables?.() ?? [];
 
-  for (const variable of variables) {
-    flyoutItems.push(...createVariableBlocks(variable));
+  if (variables.length > 0) {
+    flyoutItems.push(createVariableReporterBlock(variables[0]));
+    flyoutItems.push(...createVariableActionBlocks(variables[0]));
   }
 
   return flyoutItems;
@@ -252,13 +256,39 @@ export const toolbox: any = {
       name: "Patrol line",
       colour: "#ff7a2f",
       contents: [
-        block("patrol_initialize_tank", numberInputs({ leftDirection: 100, rightDirection: -100 })),
-        block("patrol_initialize_omni"),
+        block("patrol_initialize_tank", {
+          inputs: numberInputs({ leftDirection: 100, rightDirection: -100 }).inputs,
+          fields: {
+            leftMotor: "A",
+            rightMotor: "B",
+            grayscalePort: "5",
+          },
+        }),
+        block("patrol_initialize_omni", {
+          inputs: numberInputs({
+            leftFrontDirection: 100,
+            rightFrontDirection: 100,
+            rightRearDirection: 100,
+            leftRearDirection: 100,
+          }).inputs,
+          fields: {
+            leftFrontMotor: "A",
+            rightFrontMotor: "B",
+            rightRearMotor: "C",
+            leftRearMotor: "D",
+            grayscalePort: "5",
+          },
+        }),
         block("patrol_black_white_detection"),
         block("patrol_line_speed", numberInputs({ speed: 30 })),
         block("patrol_line_for_time", numberInputs({ speed: 30, seconds: 0.5 })),
         block("patrol_line_intersections", numberInputs({ speed: 30, rushSeconds: 0 })),
-        block("patrol_turn_branch", numberInputs({ leftSpeed: 0, rightSpeed: 0 })),
+        block("patrol_turn_branch", {
+          inputs: numberInputs({ leftSpeed: 0, rightSpeed: 0 }).inputs,
+          fields: {
+            branch: "middle",
+          },
+        }),
         block("patrol_start_motor_time", numberInputs({ leftSpeed: 20, rightSpeed: 20, seconds: 0.5 })),
         block("patrol_start_motor_angle", numberInputs({ leftSpeed: 20, rightSpeed: 20, degrees: 360 })),
         block("patrol_start_motor_until_sensor", numberInputs({ leftSpeed: 20, rightSpeed: 20, threshold: 50 })),

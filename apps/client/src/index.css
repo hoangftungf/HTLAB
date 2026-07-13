@@ -55,6 +55,57 @@ html, body, #root {
   stroke-width: 1px;
 }
 
+.blockly-overlay-panel {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 12;
+  display: flex;
+  min-width: 44px;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 122, 47, 0.45);
+  background: rgba(255, 244, 236, 0.94);
+  box-shadow: 10px 0 24px rgba(15, 23, 42, 0.18);
+  transition: width 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.blockly-overlay-panel-open {
+  width: min(1180px, calc(100% - 16px));
+}
+
+.blockly-overlay-panel-collapsed {
+  width: 44px;
+  background: rgba(255, 218, 204, 0.92);
+  box-shadow: 4px 0 14px rgba(15, 23, 42, 0.16);
+}
+
+.blockly-overlay-content {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.blockly-overlay-panel-collapsed .blockly-overlay-content {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.blockly-overlay-toggle {
+  flex: 0 0 44px;
+  border-right: 1px solid rgba(255, 122, 47, 0.35);
+  background: #ff7a2f;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.blockly-overlay-toggle:hover {
+  background: #ff6920;
+}
+
 .blockly-workspace-container .blocklyToolboxDiv {
   background: linear-gradient(180deg, #ffe2d6 0%, #ffd6c6 100%);
   border-right: 1px solid #ffc4a8;

@@ -14,7 +14,13 @@ import {
   WHALESBOT_NUMBER_FIELD_CLASS,
 } from "../blockly/fieldShapeClasses.js";
 import { WHALESBOT_BLOCK_REGISTRY } from "../blockly/blockRegistry.js";
-import { toolbox, variableToolboxFlyout, VARIABLE_CATEGORY_CALLBACK_KEY, VARIABLE_CATEGORY_COLOUR } from "../blockly/toolbox.js";
+import {
+  toolbox,
+  variableToolboxFlyout,
+  VARIABLE_CATEGORY_CALLBACK_KEY,
+  VARIABLE_CATEGORY_COLOUR,
+} from "../blockly/toolbox.js";
+import { getVariableMenuOptions, setVariableMenuHandlers } from "../blockly/blocks.js";
 import { workspaceToIR } from "../blockly/generator.js";
 import { loadProject, saveProject } from "./projectStore.js";
 import { SAMPLE_PROGRAMS } from "./samplePrograms.js";
@@ -588,6 +594,61 @@ describe("projectStore C-013 save/load compatibility", () => {
     }
   });
 
+  it("matches WhalesBot Patrol line toolbox order and visible block text", () => {
+    const workspace = new Blockly.Workspace();
+    const patrolCategory = findToolboxCategory((toolbox as { contents: ToolboxItem[] }).contents, "Patrol line");
+    const patrolTypes = (patrolCategory.contents ?? [])
+      .filter((item) => item.kind === "block")
+      .map((item) => item.type);
+    const registryPatrolTypes = WHALESBOT_BLOCK_REGISTRY
+      .filter((entry) => entry.category === "Patrol line")
+      .map((entry) => entry.type);
+
+    expect(patrolTypes).toEqual(registryPatrolTypes);
+
+    const expectedVisibleText: Record<string, string> = {
+      patrol_initialize_tank: "initialize left motor A right motor B integrated grayscale port 5",
+      patrol_initialize_omni: "initialize omni-wheel Left front motor A Right front motor B Right rear motor C Left rear motor D integrated grayscale port 5",
+      patrol_black_white_detection: "black and white detection",
+      patrol_line_speed: "patrol line speed",
+      patrol_line_for_time: "patrol line patrol line speed for",
+      patrol_line_intersections: "patrol line intersections left patrol line speed rush through intersection time",
+      patrol_turn_branch: "turn middle left motor speed right motor speed",
+      patrol_start_motor_time: "start motor left motor speed right motor speed time",
+      patrol_start_motor_angle: "start motor left motor speed right motor speed angle",
+      patrol_start_motor_until_sensor: "start motor left motor speed right motor speed Sensor 1 <",
+      patrol_start_button: "start button",
+    };
+
+    for (const entry of WHALESBOT_BLOCK_REGISTRY.filter((candidate) => candidate.category === "Patrol line")) {
+      const block = workspace.newBlock(entry.type);
+      for (const schema of entry.fields) {
+        if (schema.kind === "dropdown" || schema.kind === "text") {
+          block.setFieldValue(String(schema.defaultValue), schema.name);
+        }
+      }
+      expect(visibleBlockText(block), entry.type).toBe(expectedVisibleText[entry.type]);
+    }
+  });
+
+  it("matches WhalesBot Patrol line dropdown values", () => {
+    const workspace = new Blockly.Workspace();
+
+    const intersection = workspace.newBlock("patrol_line_intersections");
+    expect(dropdownValues(intersection.getField("branch"))).toEqual([
+      "left",
+      "right",
+      "T/Cross intersection",
+    ]);
+
+    const turn = workspace.newBlock("patrol_turn_branch");
+    expect(dropdownValues(turn.getField("branch"))).toEqual([
+      "left",
+      "middle",
+      "right",
+    ]);
+  });
+
   it("matches WhalesBot Sensor dropdown and output shapes", () => {
     const workspace = new Blockly.Workspace();
 
@@ -825,16 +886,44 @@ describe("projectStore C-013 save/load compatibility", () => {
 
     const workspace = new Blockly.Workspace();
     workspace.createVariable("number", "Number", "var-number");
+    workspace.createVariable("speed", "Number", "var-speed");
     const flyout = variableToolboxFlyout(workspace) as Element[];
     const blocks = flyout.filter((item) => item.tagName.toLowerCase() === "block");
+    const workspaceVariables = workspace.getAllVariables();
 
     expect(flyout[0].getAttribute("text")).toBe("Create a variable");
-    expect(blocks.map((item) => item.getAttribute("type"))).toEqual([...EXPECTED_VARIABLE_TOOLBOX_TYPES]);
-    for (const item of blocks) {
-      expect(item.querySelector('field[name="VAR"]')?.getAttribute("id")).toBe("var-number");
-    }
+    expect(blocks).toHaveLength(EXPECTED_VARIABLE_TOOLBOX_TYPES.length);
+    expect(blocks.filter((item) => item.getAttribute("type") === "value_variable")).toHaveLength(1);
+    expect(blocks.filter((item) => item.getAttribute("type") === "set_var_v2")).toHaveLength(1);
+    expect(blocks.filter((item) => item.getAttribute("type") === "change_var_v2")).toHaveLength(1);
+    const reporterId = blocks.find((item) => item.getAttribute("type") === "value_variable")?.querySelector('field[name="VAR"]')?.getAttribute("id");
+    expect(reporterId).toBe(workspaceVariables[0]?.getId());
+    const actionVariableId = workspaceVariables[0]?.getId();
+    expect(blocks.find((item) => item.getAttribute("type") === "set_var_v2")?.querySelector('field[name="VAR"]')?.getAttribute("id")).toBe(actionVariableId);
+    expect(blocks.find((item) => item.getAttribute("type") === "change_var_v2")?.querySelector('field[name="VAR"]')?.getAttribute("id")).toBe(actionVariableId);
     expect(blocks.find((item) => item.getAttribute("type") === "set_var_v2")?.querySelector('shadow[type="value_number"] field[name="NUM"]')?.textContent).toBe("0");
     expect(blocks.find((item) => item.getAttribute("type") === "change_var_v2")?.querySelector('shadow[type="value_number"] field[name="NUM"]')?.textContent).toBe("1");
+
+    const reporter = workspace.newBlock("value_variable");
+    const set = workspace.newBlock("set_var_v2");
+    const change = workspace.newBlock("change_var_v2");
+    expect(dropdownValues(reporter.getField("VAR"))).toEqual(["var-number", "var-speed"]);
+    expect(dropdownValues(set.getField("VAR"))).toEqual(["var-number", "var-speed"]);
+    expect(dropdownValues(change.getField("VAR"))).toEqual(["var-number", "var-speed"]);
+
+    reporter.setFieldValue("var-number", "VAR");
+    setVariableMenuHandlers({
+      openRename: () => undefined,
+      openDelete: () => undefined,
+    });
+    const contextMenu = getVariableMenuOptions(reporter);
+    expect(contextMenu.map((item) => item.text)).toEqual(
+      expect.arrayContaining([
+        "Rename variable...",
+        "Delete the 'number' variable",
+      ]),
+    );
+    setVariableMenuHandlers(null);
   });
 
   it("matches WhalesBot Variable block text and input shapes", () => {

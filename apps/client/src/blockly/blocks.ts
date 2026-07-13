@@ -53,6 +53,62 @@ const mathUnaryFunctionOptions = [
   ["10^", "10^"],
 ];
 
+class FieldVariableSelect extends Blockly.FieldVariable {
+  constructor(
+    varName: string | null | typeof Blockly.Field.SKIP_SETUP,
+    validator?: Blockly.FieldVariableValidator,
+    variableTypes?: string[],
+    defaultType?: string,
+    config?: Blockly.FieldVariableConfig,
+  ) {
+    super(varName, validator, variableTypes, defaultType, config);
+    this.menuGenerator_ = FieldVariableSelect.dropdownCreate as unknown as Blockly.MenuGeneratorFunction;
+  }
+
+  static override dropdownCreate(this: Blockly.FieldVariable): Blockly.MenuOption[] {
+    return Blockly.FieldVariable.dropdownCreate.call(this).filter((option) => {
+      const id = option[1];
+      return id !== "RENAME_VARIABLE_ID" && id !== "DELETE_VARIABLE_ID";
+    });
+  }
+}
+
+Blockly.fieldRegistry.register("field_variable_select", FieldVariableSelect);
+
+type VariableMenuHandlers = {
+  openRename: (workspace: Blockly.WorkspaceSvg, variable: Blockly.VariableModel) => void;
+  openDelete: (workspace: Blockly.WorkspaceSvg, variable: Blockly.VariableModel) => void;
+};
+
+let variableMenuHandlers: VariableMenuHandlers | null = null;
+
+export function setVariableMenuHandlers(handlers: VariableMenuHandlers | null): void {
+  variableMenuHandlers = handlers;
+}
+
+export function getVariableMenuOptions(block: Blockly.Block): Array<{ enabled: boolean; text: string; callback: () => void }> {
+  const field = block.getField("VAR") as Blockly.FieldVariable | null;
+  const variable = field?.getVariable();
+  if (!variable || !variableMenuHandlers) return [];
+
+  return [
+    {
+      enabled: true,
+      text: Blockly.Msg.RENAME_VARIABLE,
+      callback: () => {
+        variableMenuHandlers?.openRename(block.workspace as Blockly.WorkspaceSvg, variable);
+      },
+    },
+    {
+      enabled: true,
+      text: Blockly.Msg.DELETE_VARIABLE.replace("%1", variable.name),
+      callback: () => {
+        variableMenuHandlers?.openDelete(block.workspace as Blockly.WorkspaceSvg, variable);
+      },
+    },
+  ];
+}
+
 // ---- Phần cứng ----
 
 Blockly.Blocks["initialize"] = {
@@ -363,7 +419,7 @@ Blockly.Blocks["value_variable"] = {
       message0: "%1",
       args0: [
         {
-          type: "field_variable",
+          type: "field_variable_select",
           name: "VAR",
           variable: "number",
           defaultType: "Number",
@@ -372,6 +428,7 @@ Blockly.Blocks["value_variable"] = {
       colour: BLOCK_COLOURS.variables,
       output: "Number",
       tooltip: "Read a numeric variable",
+      contextMenu: false,
     });
   },
 };
@@ -383,7 +440,7 @@ Blockly.Blocks["set_var_v2"] = {
       message0: "set %1 to %2",
       args0: [
         {
-          type: "field_variable",
+          type: "field_variable_select",
           name: "VAR",
           variable: "number",
           defaultType: "Number",
@@ -395,6 +452,7 @@ Blockly.Blocks["set_var_v2"] = {
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set a variable from a value expression",
+      contextMenu: false,
     });
   },
 };
@@ -406,7 +464,7 @@ Blockly.Blocks["change_var_v2"] = {
       message0: "variables %1 by %2",
       args0: [
         {
-          type: "field_variable",
+          type: "field_variable_select",
           name: "VAR",
           variable: "number",
           defaultType: "Number",
@@ -418,6 +476,7 @@ Blockly.Blocks["change_var_v2"] = {
       previousStatement: null,
       nextStatement: null,
       tooltip: "Add a computed value to a variable",
+      contextMenu: false,
     });
   },
 };
@@ -1196,7 +1255,8 @@ const SENSOR_PORT_OPTIONS = [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5
 const STEERING_ID_OPTIONS = [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"]];
 const DIRECTION_OPTIONS = [["Forward", "Forward"], ["Backward", "Backward"]];
 const TURN_DIRECTION_OPTIONS = [["Turn left", "Turn left"], ["Turn right", "Turn right"]];
-const BRANCH_OPTIONS = [["left", "left"], ["middle", "middle"], ["right", "right"], ["T/Cross intersection", "T/Cross intersection"]];
+const PATROL_INTERSECTION_OPTIONS = [["left", "left"], ["right", "right"], ["T/Cross intersection", "T/Cross intersection"]];
+const PATROL_TURN_OPTIONS = [["left", "left"], ["middle", "middle"], ["right", "right"]];
 const COMPARE_OPTIONS = [["<", "<"], [">", ">"], ["=", "="], ["!=", "!="], ["<=", "<="], [">=", ">="]];
 const SENSOR_CHANNEL_OPTIONS = [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
 const GRAYSCALE_DETECTED_OPTIONS = [["black", "black"], ["white", "white"]];
@@ -1649,7 +1709,7 @@ Blockly.Blocks["patrol_initialize_tank"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_initialize_tank",
-      message0: "Initialize tank line follower left %1 dir %2 right %3 dir %4 grayscale port %5",
+      message0: "initialize left motor %1 %2 right motor %3 %4 integrated grayscale port %5",
       args0: [
         { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
         numberInput("leftDirection"),
@@ -1669,12 +1729,16 @@ Blockly.Blocks["patrol_initialize_omni"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_initialize_omni",
-      message0: "Initialize omni line follower LF %1 RF %2 RR %3 LR %4 grayscale port %5",
+      message0: "initialize omni-wheel Left front motor%1 %2 Right front motor%3 %4 Right rear motor%5 %6 Left rear motor%7 %8 integrated grayscale port %9",
       args0: [
         { type: "field_dropdown", name: "leftFrontMotor", options: MOTOR_PORT_OPTIONS },
+        numberInput("leftFrontDirection"),
         { type: "field_dropdown", name: "rightFrontMotor", options: MOTOR_PORT_OPTIONS },
+        numberInput("rightFrontDirection"),
         { type: "field_dropdown", name: "rightRearMotor", options: MOTOR_PORT_OPTIONS },
+        numberInput("rightRearDirection"),
         { type: "field_dropdown", name: "leftRearMotor", options: MOTOR_PORT_OPTIONS },
+        numberInput("leftRearDirection"),
         { type: "field_dropdown", name: "grayscalePort", options: SENSOR_PORT_OPTIONS },
       ],
       colour: BLOCK_COLOURS.patrolLine,
@@ -1689,7 +1753,7 @@ Blockly.Blocks["patrol_black_white_detection"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_black_white_detection",
-      message0: "Black and white detection",
+      message0: "black and white detection",
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
@@ -1702,7 +1766,7 @@ Blockly.Blocks["patrol_line_speed"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_line_speed",
-      message0: "Patrol line speed %1",
+      message0: "patrol line speed %1",
       args0: [numberInput("speed")],
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
@@ -1716,7 +1780,7 @@ Blockly.Blocks["patrol_line_for_time"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_line_for_time",
-      message0: "Patrol line speed %1 for %2 sec",
+      message0: "patrol line patrol line speed %1 for %2",
       args0: [
         numberInput("speed"),
         numberInput("seconds"),
@@ -1733,9 +1797,9 @@ Blockly.Blocks["patrol_line_intersections"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_line_intersections",
-      message0: "Patrol until %1 speed %2 rush through %3 sec",
+      message0: "patrol line intersections %1 patrol line speed %2 rush through intersection time %3",
       args0: [
-        { type: "field_dropdown", name: "branch", options: BRANCH_OPTIONS },
+        { type: "field_dropdown", name: "branch", options: PATROL_INTERSECTION_OPTIONS },
         numberInput("speed"),
         numberInput("rushSeconds"),
       ],
@@ -1751,9 +1815,9 @@ Blockly.Blocks["patrol_turn_branch"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_turn_branch",
-      message0: "Turn to %1 left speed %2 right speed %3",
+      message0: "turn %1 left motor speed %2 right motor speed %3",
       args0: [
-        { type: "field_dropdown", name: "branch", options: BRANCH_OPTIONS },
+        { type: "field_dropdown", name: "branch", options: PATROL_TURN_OPTIONS },
         numberInput("leftSpeed"),
         numberInput("rightSpeed"),
       ],
@@ -1769,7 +1833,7 @@ Blockly.Blocks["patrol_start_motor_time"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_start_motor_time",
-      message0: "Start motor left speed %1 right speed %2 time %3 sec",
+      message0: "start motor left motor speed %1 right motor speed %2 time %3",
       args0: [
         numberInput("leftSpeed"),
         numberInput("rightSpeed"),
@@ -1787,7 +1851,7 @@ Blockly.Blocks["patrol_start_motor_angle"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_start_motor_angle",
-      message0: "Start motor left speed %1 right speed %2 angle %3",
+      message0: "start motor left motor speed %1 right motor speed %2 angle %3",
       args0: [
         numberInput("leftSpeed"),
         numberInput("rightSpeed"),
@@ -1805,7 +1869,7 @@ Blockly.Blocks["patrol_start_motor_until_sensor"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_start_motor_until_sensor",
-      message0: "Start motor left speed %1 right speed %2 until sensor %3 %4 %5",
+      message0: "start motor left motor speed %1 right motor speed %2 Sensor %3 %4 %5",
       args0: [
         numberInput("leftSpeed"),
         numberInput("rightSpeed"),
@@ -1825,7 +1889,7 @@ Blockly.Blocks["patrol_start_button"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "patrol_start_button",
-      message0: "Start button",
+      message0: "start button",
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,

@@ -3,6 +3,7 @@ import * as Blockly from "blockly";
 import { toolbox, variableToolboxFlyout, VARIABLE_CATEGORY_CALLBACK_KEY } from "./toolbox.js";
 import { workspaceToIR } from "./generator.js";
 import { applyWhalesBotFieldShapeClassesForWorkspace } from "./fieldShapeClasses.js";
+import { getVariableMenuOptions, setVariableMenuHandlers } from "./blocks.js";
 import type { IRProgram } from "@htlab/simulation-core";
 import { DEFAULT_SAMPLE_PROGRAM_ID, SAMPLE_PROGRAMS } from "../store/samplePrograms.js";
 import "./blocks.js"; // Đăng ký block tùy chỉnh
@@ -14,8 +15,16 @@ interface BlocklyEditorProps {
 
 type VariableDialogState = {
   workspace: Blockly.WorkspaceSvg;
+  mode: "create" | "rename";
+  variableId?: string;
   name: string;
   error?: string;
+} | null;
+
+type DeleteVariableDialogState = {
+  workspace: Blockly.WorkspaceSvg;
+  variableId: string;
+  name: string;
 } | null;
 
 export { workspaceToIR };
@@ -64,9 +73,28 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
   );
   const [selectedSampleId, setSelectedSampleId] = useState(DEFAULT_SAMPLE_PROGRAM_ID);
   const [variableDialog, setVariableDialog] = useState<VariableDialogState>(null);
+  const [deleteVariableDialog, setDeleteVariableDialog] = useState<DeleteVariableDialogState>(null);
+  const hoveredVariableMenus = useRef(new WeakSet<SVGGElement>());
 
-  const openVariableDialog = useCallback((workspace: Blockly.WorkspaceSvg) => {
-    setVariableDialog({ workspace, name: "" });
+  const openCreateVariableDialog = useCallback((workspace: Blockly.WorkspaceSvg) => {
+    setVariableDialog({ workspace, mode: "create", name: "" });
+  }, []);
+
+  const openRenameVariableDialog = useCallback((workspace: Blockly.WorkspaceSvg, variable: Blockly.VariableModel) => {
+    setVariableDialog({
+      workspace,
+      mode: "rename",
+      variableId: variable.getId(),
+      name: variable.name,
+    });
+  }, []);
+
+  const openDeleteVariableDialog = useCallback((workspace: Blockly.WorkspaceSvg, variable: Blockly.VariableModel) => {
+    setDeleteVariableDialog({
+      workspace,
+      variableId: variable.getId(),
+      name: variable.name,
+    });
   }, []);
 
   const closeVariableDialog = useCallback(() => {
@@ -83,12 +111,16 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
       return;
     }
 
-    if (Blockly.Variables.nameUsedWithAnyType(name, variableDialog.workspace)) {
+    if (variableDialog.mode === "create" && Blockly.Variables.nameUsedWithAnyType(name, variableDialog.workspace)) {
       setVariableDialog({ ...variableDialog, error: `Variable "${name}" already exists.` });
       return;
     }
 
-    variableDialog.workspace.createVariable(name, "Number");
+    if (variableDialog.mode === "rename" && variableDialog.variableId) {
+      variableDialog.workspace.renameVariableById(variableDialog.variableId, name);
+    } else {
+      variableDialog.workspace.createVariable(name, "Number");
+    }
     variableDialog.workspace.refreshToolboxSelection();
     setVariableDialog(null);
   }, [variableDialog]);
@@ -113,6 +145,29 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
     });
   }, []);
 
+  const attachVariableHoverMenus = useCallback((flyoutWorkspace: Blockly.WorkspaceSvg | null) => {
+    if (!flyoutWorkspace) return;
+    for (const block of flyoutWorkspace.getAllBlocks(false)) {
+      if (block.type !== "value_variable" || !flyoutWorkspace.isFlyout) continue;
+      const svgRoot = (block as Blockly.BlockSvg).getSvgRoot?.();
+      if (!svgRoot || hoveredVariableMenus.current.has(svgRoot)) continue;
+
+      const showMenu = (event: MouseEvent) => {
+        const options = getVariableMenuOptions(block);
+        if (!options.length) return;
+        Blockly.ContextMenu.show(event as unknown as PointerEvent, options, flyoutWorkspace.RTL, flyoutWorkspace);
+      };
+
+      const hideMenu = () => {
+        Blockly.ContextMenu.hide();
+      };
+
+      svgRoot.addEventListener("mouseover", showMenu);
+      svgRoot.addEventListener("mouseleave", hideMenu);
+      hoveredVariableMenus.current.add(svgRoot);
+    }
+  }, []);
+
   // Khởi tạo không gian làm việc Blockly
   useEffect(() => {
     if (!containerRef.current || workspaceRef.current) return;
@@ -131,9 +186,13 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
 
     workspaceRef.current = workspace;
     workspace.registerToolboxCategoryCallback(VARIABLE_CATEGORY_CALLBACK_KEY, variableToolboxFlyout);
+    setVariableMenuHandlers({
+      openRename: openRenameVariableDialog,
+      openDelete: openDeleteVariableDialog,
+    });
     workspace.registerButtonCallback("CREATE_VARIABLE", (button) => {
       const targetWorkspace = (button as any).getTargetWorkspace?.() ?? workspace;
-      openVariableDialog(targetWorkspace);
+      openCreateVariableDialog(targetWorkspace);
     });
     workspace.registerButtonCallback("CREATE_MY_BLOCK", (button) => {
       const targetWorkspace = (button as any).getTargetWorkspace?.() ?? workspace;
@@ -166,23 +225,29 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
       fieldShapeFrame = window.requestAnimationFrame(() => {
         fieldShapeFrame = 0;
         applyWhalesBotFieldShapeClassesForWorkspace(workspace);
+        attachVariableHoverMenus(workspace.getFlyout()?.getWorkspace() ?? null);
       });
     };
 
     const mutationObserver = new MutationObserver(scheduleFieldShapeSync);
     mutationObserver.observe(containerRef.current, { childList: true, subtree: true });
-    workspace.addChangeListener(scheduleFieldShapeSync);
+    const syncWorkspaceState = () => {
+      scheduleFieldShapeSync();
+    };
+    workspace.addChangeListener(syncWorkspaceState);
     scheduleFieldShapeSync();
+    attachVariableHoverMenus(workspace.getFlyout()?.getWorkspace() ?? null);
 
     return () => {
+      setVariableMenuHandlers(null);
       if (fieldShapeFrame) window.cancelAnimationFrame(fieldShapeFrame);
       mutationObserver.disconnect();
-      workspace.removeChangeListener(scheduleFieldShapeSync);
+      workspace.removeChangeListener(syncWorkspaceState);
       observer.disconnect();
       workspace.dispose();
       workspaceRef.current = null;
     };
-  }, [openVariableDialog]);
+  }, [attachVariableHoverMenus, openCreateVariableDialog, openDeleteVariableDialog, openRenameVariableDialog]);
 
   useEffect(() => {
     window.localStorage.setItem(TOOLBOX_EXPANDED_STORAGE_KEY, String(toolboxExpanded));
@@ -342,7 +407,7 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
           >
             <div className="flex items-center justify-between rounded-t-md bg-[#e4f5ed] px-3 py-2">
               <h2 id="variable-dialog-title" className="text-sm font-medium text-gray-900">
-                Create a variable
+                {variableDialog.mode === "rename" ? "Rename variable" : "Create a variable"}
               </h2>
               <button
                 type="button"
@@ -375,7 +440,7 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
                 type="submit"
                 className="min-w-28 rounded bg-[#ff865c] px-6 py-2 text-sm font-medium text-white hover:bg-[#ff7444]"
               >
-                OK
+                {variableDialog.mode === "rename" ? "Rename" : "OK"}
               </button>
               <button
                 type="button"
@@ -386,6 +451,55 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+      {deleteVariableDialog ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="variable-delete-dialog-title"
+        >
+          <div className="w-[376px] rounded-md border border-gray-300 bg-white shadow-xl">
+            <div className="flex items-center justify-between rounded-t-md bg-[#fbe3d5] px-3 py-2">
+              <h2 id="variable-delete-dialog-title" className="text-sm font-medium text-gray-900">
+                Delete variable
+              </h2>
+              <button
+                type="button"
+                onClick={() => setDeleteVariableDialog(null)}
+                className="rounded px-2 text-lg leading-none text-gray-800 hover:bg-black/10"
+                aria-label="Close delete dialog"
+              >
+                x
+              </button>
+            </div>
+            <div className="px-4 py-7">
+              <p className="text-sm text-gray-900">
+                Delete variable "{deleteVariableDialog.name}"?
+              </p>
+            </div>
+            <div className="flex justify-center gap-3 px-4 pb-7">
+              <button
+                type="button"
+                onClick={() => {
+                  deleteVariableDialog.workspace.deleteVariableById(deleteVariableDialog.variableId);
+                  deleteVariableDialog.workspace.refreshToolboxSelection();
+                  setDeleteVariableDialog(null);
+                }}
+                className="min-w-28 rounded bg-[#ff865c] px-6 py-2 text-sm font-medium text-white hover:bg-[#ff7444]"
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteVariableDialog(null)}
+                className="min-w-28 rounded border border-[#ff865c] px-6 py-2 text-sm font-medium text-[#ff865c] hover:bg-[#fff1ea]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

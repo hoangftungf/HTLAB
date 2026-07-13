@@ -8,14 +8,11 @@ import BlocklyEditor from "./blockly/BlocklyEditor.js";
 import ProjectManager from "./components/ProjectManager.js";
 import type { IRProgram } from "@htlab/simulation-core";
 
-const LEFT_PANE_STORAGE_KEY = "htlab:leftPaneWidth";
 const RIGHT_PANE_STORAGE_KEY = "htlab:rightPaneWidth";
 const TELEMETRY_STORAGE_KEY = "htlab:telemetryOpen";
+const BLOCKLY_PANEL_STORAGE_KEY = "htlab:blocklyPanelOpen";
 
-const DEFAULT_LEFT_PANE_WIDTH = 560;
 const DEFAULT_RIGHT_PANE_WIDTH = 300;
-const MIN_LEFT_PANE_WIDTH = 420;
-const MAX_LEFT_PANE_WIDTH = 820;
 const MIN_RIGHT_PANE_WIDTH = 260;
 const MAX_RIGHT_PANE_WIDTH = 420;
 const MIN_SIMULATION_WIDTH = 360;
@@ -53,14 +50,14 @@ export default function App() {
   const clearError = useSimStore((s) => s.clearError);
 
   const [irOutput, setIrOutput] = useState<IRProgram | null>(null);
-  const [leftPaneWidth, setLeftPaneWidth] = useState(() =>
-    readStoredNumber(LEFT_PANE_STORAGE_KEY, DEFAULT_LEFT_PANE_WIDTH),
-  );
   const [rightPaneWidth, setRightPaneWidth] = useState(() =>
     readStoredNumber(RIGHT_PANE_STORAGE_KEY, DEFAULT_RIGHT_PANE_WIDTH),
   );
   const [telemetryOpen, setTelemetryOpen] = useState(() =>
     readStoredBoolean(TELEMETRY_STORAGE_KEY, true),
+  );
+  const [blocklyPanelOpen, setBlocklyPanelOpen] = useState(() =>
+    readStoredBoolean(BLOCKLY_PANEL_STORAGE_KEY, true),
   );
 
   // Khởi tạo mô phỏng khi component được gắn
@@ -94,30 +91,14 @@ export default function App() {
 
   const handleRunProgram = useCallback(() => {
     if (!irOutput) return;
+    setBlocklyPanelOpen(false);
     runProgram(irOutput);
   }, [irOutput, runProgram]);
-
-  const constrainLeftPaneWidth = useCallback(
-    (nextWidth: number) => {
-      const layoutWidth = layoutRef.current?.clientWidth ?? window.innerWidth;
-      const activeRightWidth = telemetryOpen ? rightPaneWidth + SPLITTER_WIDTH : 0;
-      const maxFromViewport =
-        layoutWidth - activeRightWidth - MIN_SIMULATION_WIDTH - SPLITTER_WIDTH;
-      const maxWidth = Math.max(
-        MIN_LEFT_PANE_WIDTH,
-        Math.min(MAX_LEFT_PANE_WIDTH, maxFromViewport),
-      );
-
-      return clamp(nextWidth, MIN_LEFT_PANE_WIDTH, maxWidth);
-    },
-    [rightPaneWidth, telemetryOpen],
-  );
 
   const constrainRightPaneWidth = useCallback(
     (nextWidth: number) => {
       const layoutWidth = layoutRef.current?.clientWidth ?? window.innerWidth;
-      const maxFromViewport =
-        layoutWidth - leftPaneWidth - MIN_SIMULATION_WIDTH - SPLITTER_WIDTH * 2;
+      const maxFromViewport = layoutWidth - MIN_SIMULATION_WIDTH - SPLITTER_WIDTH;
       const maxWidth = Math.max(
         MIN_RIGHT_PANE_WIDTH,
         Math.min(MAX_RIGHT_PANE_WIDTH, maxFromViewport),
@@ -125,27 +106,20 @@ export default function App() {
 
       return clamp(nextWidth, MIN_RIGHT_PANE_WIDTH, maxWidth);
     },
-    [leftPaneWidth],
+    [],
   );
 
   const beginPaneResize = useCallback(
-    (side: "left" | "right", event: React.PointerEvent<HTMLDivElement>) => {
+    (event: React.PointerEvent<HTMLDivElement>) => {
       event.preventDefault();
 
       const startX = event.clientX;
-      const startLeftWidth = leftPaneWidth;
       const startRightWidth = rightPaneWidth;
 
       document.body.classList.add("is-resizing-pane");
 
       const handlePointerMove = (moveEvent: PointerEvent) => {
         const deltaX = moveEvent.clientX - startX;
-
-        if (side === "left") {
-          setLeftPaneWidth(constrainLeftPaneWidth(startLeftWidth + deltaX));
-          return;
-        }
-
         setRightPaneWidth(constrainRightPaneWidth(startRightWidth - deltaX));
       };
 
@@ -160,17 +134,8 @@ export default function App() {
       document.addEventListener("pointerup", stopResize, { once: true });
       document.addEventListener("pointercancel", stopResize, { once: true });
     },
-    [
-      constrainLeftPaneWidth,
-      constrainRightPaneWidth,
-      leftPaneWidth,
-      rightPaneWidth,
-    ],
+    [constrainRightPaneWidth, rightPaneWidth],
   );
-
-  useEffect(() => {
-    window.localStorage.setItem(LEFT_PANE_STORAGE_KEY, String(Math.round(leftPaneWidth)));
-  }, [leftPaneWidth]);
 
   useEffect(() => {
     window.localStorage.setItem(RIGHT_PANE_STORAGE_KEY, String(Math.round(rightPaneWidth)));
@@ -181,17 +146,24 @@ export default function App() {
   }, [telemetryOpen]);
 
   useEffect(() => {
+    window.localStorage.setItem(BLOCKLY_PANEL_STORAGE_KEY, String(blocklyPanelOpen));
+  }, [blocklyPanelOpen]);
+
+  useEffect(() => {
+    if (running) setBlocklyPanelOpen(false);
+  }, [running]);
+
+  useEffect(() => {
     const layout = layoutRef.current;
     if (!layout) return;
 
     const observer = new ResizeObserver(() => {
-      setLeftPaneWidth((current) => constrainLeftPaneWidth(current));
       setRightPaneWidth((current) => constrainRightPaneWidth(current));
     });
 
     observer.observe(layout);
     return () => observer.disconnect();
-  }, [constrainLeftPaneWidth, constrainRightPaneWidth]);
+  }, [constrainRightPaneWidth]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -222,31 +194,32 @@ export default function App() {
       )}
 
       <div ref={layoutRef} className="flex min-h-0 flex-1 overflow-hidden">
-        {/* Trái: Blockly Editor */}
-        <div
-          className="flex min-w-0 flex-col border-r border-gray-700 bg-surface"
-          style={{ flex: `0 0 ${leftPaneWidth}px` }}
-        >
-          <ProjectManager
-            onLoadWorkspace={loadWorkspaceXml}
-            onGetWorkspaceXml={getWorkspaceXml}
-          />
-          <div className="blockly-workspace-container min-h-0 flex-1 overflow-hidden">
-            <BlocklyEditor onIRGenerated={handleIRGenerated} />
-          </div>
-        </div>
-
-        {/* Giữa: Simulation View */}
-        <div
-          role="separator"
-          aria-label="Resize Blockly editor"
-          aria-orientation="vertical"
-          className="pane-splitter"
-          onPointerDown={(event) => beginPaneResize("left", event)}
-        />
-
         <div className="relative flex min-w-0 flex-1 flex-col">
           <SimulationView sim={activeSim} mapData={mapData} running={running} />
+
+          <div
+            className={`blockly-overlay-panel ${
+              blocklyPanelOpen ? "blockly-overlay-panel-open" : "blockly-overlay-panel-collapsed"
+            }`}
+          >
+            <button
+              onClick={() => setBlocklyPanelOpen((open) => !open)}
+              className="blockly-overlay-toggle"
+              aria-label={blocklyPanelOpen ? "Collapse Blockly editor" : "Expand Blockly editor"}
+              title={blocklyPanelOpen ? "Collapse Blockly editor" : "Expand Blockly editor"}
+            >
+              {blocklyPanelOpen ? "Hide" : "Blocks"}
+            </button>
+            <div className="blockly-overlay-content">
+              <ProjectManager
+                onLoadWorkspace={loadWorkspaceXml}
+                onGetWorkspaceXml={getWorkspaceXml}
+              />
+              <div className="blockly-workspace-container min-h-0 flex-1 overflow-hidden">
+                <BlocklyEditor onIRGenerated={handleIRGenerated} />
+              </div>
+            </div>
+          </div>
 
           {/* Thanh trạng thái kết quả IR */}
           {irOutput && (
@@ -283,7 +256,7 @@ export default function App() {
               aria-label="Resize telemetry panel"
               aria-orientation="vertical"
               className="pane-splitter"
-              onPointerDown={(event) => beginPaneResize("right", event)}
+              onPointerDown={beginPaneResize}
             />
             <div
               className="relative min-w-0 border-l border-gray-700 bg-surface"
