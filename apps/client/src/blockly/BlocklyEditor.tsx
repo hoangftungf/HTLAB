@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback, useState } from "react";
 import * as Blockly from "blockly";
 import { toolbox } from "./toolbox.js";
 import { workspaceToIR } from "./generator.js";
+import { applyWhalesBotFieldShapeClassesForWorkspace } from "./fieldShapeClasses.js";
 import type { IRProgram } from "@htlab/simulation-core";
 import { DEFAULT_SAMPLE_PROGRAM_ID, SAMPLE_PROGRAMS } from "../store/samplePrograms.js";
 import "./blocks.js"; // Đăng ký block tùy chỉnh
@@ -123,7 +124,24 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
     });
     observer.observe(containerRef.current);
 
+    let fieldShapeFrame = 0;
+    const scheduleFieldShapeSync = () => {
+      if (fieldShapeFrame) window.cancelAnimationFrame(fieldShapeFrame);
+      fieldShapeFrame = window.requestAnimationFrame(() => {
+        fieldShapeFrame = 0;
+        applyWhalesBotFieldShapeClassesForWorkspace(workspace);
+      });
+    };
+
+    const mutationObserver = new MutationObserver(scheduleFieldShapeSync);
+    mutationObserver.observe(containerRef.current, { childList: true, subtree: true });
+    workspace.addChangeListener(scheduleFieldShapeSync);
+    scheduleFieldShapeSync();
+
     return () => {
+      if (fieldShapeFrame) window.cancelAnimationFrame(fieldShapeFrame);
+      mutationObserver.disconnect();
+      workspace.removeChangeListener(scheduleFieldShapeSync);
       observer.disconnect();
       workspace.dispose();
       workspaceRef.current = null;

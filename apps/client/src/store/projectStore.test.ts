@@ -8,6 +8,11 @@ import {
   DEFAULT_ROBOT_CONFIG,
 } from "@htlab/simulation-core";
 import "../blockly/blocks.js";
+import {
+  applyWhalesBotFieldShapeClass,
+  WHALESBOT_DROPDOWN_FIELD_CLASS,
+  WHALESBOT_NUMBER_FIELD_CLASS,
+} from "../blockly/fieldShapeClasses.js";
 import { WHALESBOT_BLOCK_REGISTRY } from "../blockly/blockRegistry.js";
 import { toolbox } from "../blockly/toolbox.js";
 import { workspaceToIR } from "../blockly/generator.js";
@@ -206,6 +211,14 @@ function dropdownValues(field: Blockly.Field | null): string[] {
     throw new Error("Expected a dropdown field");
   }
   return (field as any).getOptions(false).map((option: readonly string[]) => option[1]);
+}
+
+function makeSvgFieldRoot(): { root: SVGGElement; rect: SVGRectElement } {
+  const root = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  rect.classList.add("blocklyFieldRect");
+  root.append(rect);
+  return { root, rect };
 }
 
 function makeWorkspace(): Blockly.Workspace {
@@ -420,6 +433,55 @@ describe("projectStore C-013 save/load compatibility", () => {
     const steeringRotation = workspace.newBlock("motion_steering_rotation_mode");
     expect(dropdownValues(steeringAngle.getField("id"))).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
     expect(dropdownValues(steeringRotation.getField("id"))).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+  });
+
+  it("uses WhalesBot field widget types for Motion, Sensor, Event, and Loop", () => {
+    const workspace = new Blockly.Workspace();
+    const auditedCategories = new Set(["Motion", "Sensor", "Event", "Loop"]);
+
+    for (const entry of WHALESBOT_BLOCK_REGISTRY.filter((candidate) => auditedCategories.has(candidate.category))) {
+      const block = workspace.newBlock(entry.type);
+
+      for (const schema of entry.fields) {
+        if (schema.kind !== "number" && schema.kind !== "dropdown") continue;
+
+        const field = block.getField(schema.name);
+        expect(field, `${entry.type}.${schema.name}`).not.toBeNull();
+        if (schema.kind === "number") {
+          expect(field, `${entry.type}.${schema.name}`).toBeInstanceOf(Blockly.FieldNumber);
+        } else {
+          expect(field, `${entry.type}.${schema.name}`).toBeInstanceOf(Blockly.FieldDropdown);
+        }
+      }
+    }
+  });
+
+  it("marks numeric Blockly fields as oval and dropdown fields as rectangular", () => {
+    class FieldNumber {
+      constructor(private readonly root: SVGGElement) {}
+      getSvgRoot(): SVGGElement {
+        return this.root;
+      }
+    }
+
+    class FieldDropdown {
+      constructor(private readonly root: SVGGElement) {}
+      getSvgRoot(): SVGGElement {
+        return this.root;
+      }
+    }
+
+    const numberField = makeSvgFieldRoot();
+    applyWhalesBotFieldShapeClass(new FieldNumber(numberField.root));
+    expect(numberField.root.classList.contains(WHALESBOT_NUMBER_FIELD_CLASS)).toBe(true);
+    expect(numberField.rect.getAttribute("rx")).toBe("999");
+    expect(numberField.rect.getAttribute("ry")).toBe("999");
+
+    const dropdownField = makeSvgFieldRoot();
+    applyWhalesBotFieldShapeClass(new FieldDropdown(dropdownField.root));
+    expect(dropdownField.root.classList.contains(WHALESBOT_DROPDOWN_FIELD_CLASS)).toBe(true);
+    expect(dropdownField.rect.getAttribute("rx")).toBe("4");
+    expect(dropdownField.rect.getAttribute("ry")).toBe("4");
   });
 
   it("matches WhalesBot Sensor toolbox order and visible block text", () => {
