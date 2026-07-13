@@ -182,6 +182,18 @@ describe("projectStore C-013 save/load compatibility", () => {
     localStorage.clear();
   });
 
+  it("renders Event trigger blocks as hat blocks", () => {
+    const workspace = new Blockly.Workspace();
+
+    for (const type of ["event_program_execute", "event_touch_switch_pressed"]) {
+      const block = workspace.newBlock(type);
+
+      expect(block.previousConnection).toBeNull();
+      expect(block.nextConnection).not.toBeNull();
+      expect(block.hat).toBe("cap");
+    }
+  });
+
   it("preserves variable ids and custom-block definitions through save/load/regenerate", () => {
     const workspace = makeWorkspace();
     const xml = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(workspace));

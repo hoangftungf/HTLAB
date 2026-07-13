@@ -1456,12 +1456,17 @@ function registerRegistryFallbackBlock(entry: BlockRegistryEntry): void {
         config.output = "Number";
       } else if (entry.kind === "reporter") {
         config.output = null;
+      } else if (entry.kind === "hat") {
+        config.nextStatement = null;
       } else {
         config.previousStatement = null;
         config.nextStatement = null;
       }
 
       this.jsonInit(config);
+      if (entry.kind === "hat") {
+        this.hat = "cap";
+      }
     },
   };
 }
