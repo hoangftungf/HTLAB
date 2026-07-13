@@ -916,8 +916,10 @@ Blockly.Blocks["my_block_param_value"] = {
 
 // ---- C-011 Motion and Patrol line runtime blocks ----
 
-const MOTOR_PORT_OPTIONS = [["A", "A"], ["B", "B"], ["C", "C"], ["D", "D"], ["all", "all"]];
+const MOTOR_PORT_OPTIONS = [["A", "A"], ["B", "B"], ["C", "C"], ["D", "D"]];
+const MOTOR_PORT_WITH_ALL_OPTIONS = [["all", "all"], ...MOTOR_PORT_OPTIONS];
 const SENSOR_PORT_OPTIONS = [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
+const STEERING_ID_OPTIONS = [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"]];
 const DIRECTION_OPTIONS = [["Forward", "Forward"], ["Backward", "Backward"]];
 const TURN_DIRECTION_OPTIONS = [["Turn left", "Turn left"], ["Turn right", "Turn right"]];
 const BRANCH_OPTIONS = [["left", "left"], ["middle", "middle"], ["right", "right"], ["T/Cross intersection", "T/Cross intersection"]];
@@ -927,7 +929,7 @@ Blockly.Blocks["motion_tank_drive_continuous"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_tank_drive_continuous",
-      message0: "Move left motor %1 right motor %2 %3 power %4 %%",
+      message0: "move left motor %1 right motor %2 %3 power %4 %%",
       args0: [
         { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
@@ -939,6 +941,7 @@ Blockly.Blocks["motion_tank_drive_continuous"] = {
       nextStatement: null,
       tooltip: "Drive the differential left/right motor pair continuously",
     });
+    this.setFieldValue("B", "rightMotor");
   },
 };
 
@@ -946,7 +949,7 @@ Blockly.Blocks["motion_tank_drive_seconds"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_tank_drive_seconds",
-      message0: "Move left motor %1 right motor %2 %3 power %4 %% for %5 sec",
+      message0: "move left motor %1 right motor %2 %3 power %4 %% run for %5 secs.",
       args0: [
         { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
@@ -959,6 +962,7 @@ Blockly.Blocks["motion_tank_drive_seconds"] = {
       nextStatement: null,
       tooltip: "Drive the motor pair for a duration, then stop",
     });
+    this.setFieldValue("B", "rightMotor");
   },
 };
 
@@ -966,7 +970,7 @@ Blockly.Blocks["motion_stop_pair"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_stop_pair",
-      message0: "Stop left motor %1 right motor %2",
+      message0: "stop left motor %1 right motor %2",
       args0: [
         { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
@@ -976,6 +980,7 @@ Blockly.Blocks["motion_stop_pair"] = {
       nextStatement: null,
       tooltip: "Stop the differential motor pair",
     });
+    this.setFieldValue("B", "rightMotor");
   },
 };
 
@@ -983,7 +988,7 @@ Blockly.Blocks["motion_single_motor_power"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_single_motor_power",
-      message0: "Set motor %1 power %2 %%",
+      message0: "set motor %1 power %2 %%",
       args0: [
         { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
@@ -1000,7 +1005,7 @@ Blockly.Blocks["motion_dual_motor_seconds"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_dual_motor_seconds",
-      message0: "Set motor %1 power %2 %% motor %3 power %4 %% for %5 sec",
+      message0: "set motor %1 power %2 %% motor %3 power %4 %% run for %5 secs.",
       args0: [
         { type: "field_dropdown", name: "motorA", options: MOTOR_PORT_OPTIONS },
         { type: "field_number", name: "powerA", value: 40, min: -100, max: 100 },
@@ -1013,6 +1018,7 @@ Blockly.Blocks["motion_dual_motor_seconds"] = {
       nextStatement: null,
       tooltip: "Set two motors for a duration, then stop",
     });
+    this.setFieldValue("B", "motorB");
   },
 };
 
@@ -1020,7 +1026,7 @@ Blockly.Blocks["motion_single_motor_seconds"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_single_motor_seconds",
-      message0: "Set motor %1 power %2 %% for %3 sec",
+      message0: "set motor %1 power %2 %% run for %3 secs.",
       args0: [
         { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
@@ -1038,7 +1044,7 @@ Blockly.Blocks["motion_dual_motor_degrees"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_dual_motor_degrees",
-      message0: "Set motor %1 power %2 %% motor %3 power %4 %% rotate %5 degrees",
+      message0: "set motor %1 power %2 %% motor %3 power %4 %% rotate for %5 degrees",
       args0: [
         { type: "field_dropdown", name: "motorA", options: MOTOR_PORT_OPTIONS },
         { type: "field_number", name: "powerA", value: 40, min: -100, max: 100 },
@@ -1051,6 +1057,7 @@ Blockly.Blocks["motion_dual_motor_degrees"] = {
       nextStatement: null,
       tooltip: "Encoder-based motion currently emits a diagnostic",
     });
+    this.setFieldValue("B", "motorB");
   },
 };
 
@@ -1058,7 +1065,7 @@ Blockly.Blocks["motion_single_motor_degrees"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_single_motor_degrees",
-      message0: "Set motor %1 power %2 %% rotate %3 degrees",
+      message0: "set motor %1 power %2 %% rotate for %3 degrees",
       args0: [
         { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
@@ -1076,7 +1083,7 @@ Blockly.Blocks["motion_reverse_motor"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_reverse_motor",
-      message0: "Reverse motor %1",
+      message0: "reverse motor %1",
       args0: [{ type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS }],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1090,8 +1097,8 @@ Blockly.Blocks["motion_stop_motor"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_stop_motor",
-      message0: "Stop motor %1",
-      args0: [{ type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS }],
+      message0: "stop motor %1",
+      args0: [{ type: "field_dropdown", name: "motor", options: MOTOR_PORT_WITH_ALL_OPTIONS }],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
@@ -1104,7 +1111,7 @@ Blockly.Blocks["motion_omni_move"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_omni_move",
-      message0: "Omni-wheel move power %1 %% towards %2 degrees",
+      message0: "omni-wheel move power %1 %% towards %2 degree",
       args0: [
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
         { type: "field_number", name: "headingDegrees", value: 0 },
@@ -1121,7 +1128,7 @@ Blockly.Blocks["motion_omni_turn"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_omni_turn",
-      message0: "Omni-wheel turn %1 power %2 %%",
+      message0: "omni-wheel turn %1 power %2 %%",
       args0: [
         { type: "field_dropdown", name: "direction", options: TURN_DIRECTION_OPTIONS },
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
@@ -1138,7 +1145,7 @@ Blockly.Blocks["motion_omni_stop"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_omni_stop",
-      message0: "Stop omni-wheel move",
+      message0: "stop omni-wheel move",
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
@@ -1151,9 +1158,9 @@ Blockly.Blocks["motion_steering_angle_mode"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_steering_angle_mode",
-      message0: "Steering gear angle mode ID %1 speed %2 angle %3",
+      message0: "set up steering gear angle mode ID %1 speed %2 angle %3",
       args0: [
-        { type: "field_number", name: "id", value: 1, min: 1 },
+        { type: "field_dropdown", name: "id", options: STEERING_ID_OPTIONS },
         { type: "field_number", name: "speed", value: 40, min: 0, max: 100 },
         { type: "field_number", name: "angle", value: 0 },
       ],
@@ -1169,9 +1176,9 @@ Blockly.Blocks["motion_steering_rotation_mode"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_steering_rotation_mode",
-      message0: "Steering gear rotation mode ID %1 speed %2",
+      message0: "set up steering gear rotation mode ID %1 speed %2",
       args0: [
-        { type: "field_number", name: "id", value: 1, min: 1 },
+        { type: "field_dropdown", name: "id", options: STEERING_ID_OPTIONS },
         { type: "field_number", name: "speed", value: 40, min: -100, max: 100 },
       ],
       colour: BLOCK_COLOURS.movement,
@@ -1186,7 +1193,7 @@ Blockly.Blocks["motion_restore_steering_torque"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
       type: "motion_restore_steering_torque",
-      message0: "Restore steering torque",
+      message0: "restore steering torque",
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,

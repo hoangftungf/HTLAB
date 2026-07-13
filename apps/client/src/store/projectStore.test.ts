@@ -8,6 +8,7 @@ import {
   DEFAULT_ROBOT_CONFIG,
 } from "@htlab/simulation-core";
 import "../blockly/blocks.js";
+import { WHALESBOT_BLOCK_REGISTRY } from "../blockly/blockRegistry.js";
 import { toolbox } from "../blockly/toolbox.js";
 import { workspaceToIR } from "../blockly/generator.js";
 import { loadProject, saveProject } from "./projectStore.js";
@@ -49,10 +50,49 @@ function connectNext(parent: Blockly.Block, child: Blockly.Block): void {
 
 type ToolboxItem = {
   kind: string;
+  name?: string;
   type?: string;
   inputs?: Record<string, unknown>;
   fields?: Record<string, unknown>;
   contents?: ToolboxItem[];
+};
+
+const EXPECTED_MOTION_TOOLBOX_TYPES = [
+  "motion_tank_drive_continuous",
+  "motion_tank_drive_seconds",
+  "motion_stop_pair",
+  "motion_single_motor_power",
+  "motion_dual_motor_seconds",
+  "motion_single_motor_seconds",
+  "motion_dual_motor_degrees",
+  "motion_single_motor_degrees",
+  "motion_reverse_motor",
+  "motion_stop_motor",
+  "motion_omni_move",
+  "motion_omni_turn",
+  "motion_omni_stop",
+  "motion_steering_angle_mode",
+  "motion_steering_rotation_mode",
+  "motion_restore_steering_torque",
+] as const;
+
+const EXPECTED_MOTION_BLOCK_TEXT: Record<typeof EXPECTED_MOTION_TOOLBOX_TYPES[number], string> = {
+  motion_tank_drive_continuous: "move left motor A right motor B Forward power 40 %",
+  motion_tank_drive_seconds: "move left motor A right motor B Forward power 40 % run for 1 secs.",
+  motion_stop_pair: "stop left motor A right motor B",
+  motion_single_motor_power: "set motor A power 40 %",
+  motion_dual_motor_seconds: "set motor A power 40 % motor B power 40 % run for 1 secs.",
+  motion_single_motor_seconds: "set motor A power 40 % run for 1 secs.",
+  motion_dual_motor_degrees: "set motor A power 40 % motor B power 40 % rotate for 360 degrees",
+  motion_single_motor_degrees: "set motor A power 40 % rotate for 360 degrees",
+  motion_reverse_motor: "reverse motor A",
+  motion_stop_motor: "stop motor all",
+  motion_omni_move: "omni-wheel move power 40 % towards 0 degree",
+  motion_omni_turn: "omni-wheel turn Turn left power 40 %",
+  motion_omni_stop: "stop omni-wheel move",
+  motion_steering_angle_mode: "set up steering gear angle mode ID 1 speed 40 angle 0",
+  motion_steering_rotation_mode: "set up steering gear rotation mode ID 1 speed 40",
+  motion_restore_steering_torque: "restore steering torque",
 };
 
 function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem[] = []): ToolboxItem[] {
@@ -61,6 +101,14 @@ function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem
     if (item.contents) collectToolboxBlocks(item.contents, blocks);
   }
   return blocks;
+}
+
+function findToolboxCategory(items: readonly ToolboxItem[], name: string): ToolboxItem {
+  const category = items.find((item) => item.kind === "category" && item.name === name);
+  if (!category?.contents) {
+    throw new Error(`Toolbox category not found: ${name}`);
+  }
+  return category;
 }
 
 function collectToolboxCategoryNames(items: readonly ToolboxItem[]): string[] {
@@ -72,6 +120,22 @@ function collectToolboxCategoryNames(items: readonly ToolboxItem[]): string[] {
       }
       return item.name;
     });
+}
+
+function visibleBlockText(block: Blockly.Block): string {
+  return block.inputList
+    .flatMap((input) => input.fieldRow.map((field) => field.getText()))
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function dropdownValues(field: Blockly.Field | null): string[] {
+  if (!field || typeof (field as any).getOptions !== "function") {
+    throw new Error("Expected a dropdown field");
+  }
+  return (field as any).getOptions(false).map((option: readonly string[]) => option[1]);
 }
 
 function makeWorkspace(): Blockly.Workspace {
@@ -251,6 +315,41 @@ describe("projectStore C-013 save/load compatibility", () => {
       "C Code",
     ]);
     expect(categories).not.toContain("Hardware");
+  });
+
+  it("matches WhalesBot Motion toolbox order and visible block text", () => {
+    const workspace = new Blockly.Workspace();
+    const motionCategory = findToolboxCategory((toolbox as { contents: ToolboxItem[] }).contents, "Motion");
+    const motionTypes = (motionCategory.contents ?? [])
+      .filter((item) => item.kind === "block")
+      .map((item) => item.type);
+    const registryMotionTypes = WHALESBOT_BLOCK_REGISTRY
+      .filter((entry) => entry.category === "Motion")
+      .map((entry) => entry.type);
+
+    expect(motionTypes).toEqual([...EXPECTED_MOTION_TOOLBOX_TYPES]);
+    expect(motionTypes).toEqual(registryMotionTypes);
+
+    for (const type of EXPECTED_MOTION_TOOLBOX_TYPES) {
+      const block = workspace.newBlock(type);
+      expect(visibleBlockText(block), type).toBe(EXPECTED_MOTION_BLOCK_TEXT[type]);
+    }
+  });
+
+  it("matches WhalesBot Motion dropdown field shapes", () => {
+    const workspace = new Blockly.Workspace();
+
+    const drive = workspace.newBlock("motion_tank_drive_continuous");
+    expect(dropdownValues(drive.getField("leftMotor"))).toEqual(["A", "B", "C", "D"]);
+    expect(dropdownValues(drive.getField("rightMotor"))).toEqual(["A", "B", "C", "D"]);
+
+    const stopMotor = workspace.newBlock("motion_stop_motor");
+    expect(dropdownValues(stopMotor.getField("motor"))).toEqual(["all", "A", "B", "C", "D"]);
+
+    const steeringAngle = workspace.newBlock("motion_steering_angle_mode");
+    const steeringRotation = workspace.newBlock("motion_steering_rotation_mode");
+    expect(dropdownValues(steeringAngle.getField("id"))).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+    expect(dropdownValues(steeringRotation.getField("id"))).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
   });
 
   it("keeps toolbox input and field names aligned with block definitions", () => {

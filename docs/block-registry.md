@@ -27,7 +27,7 @@ projects and samples, but are not exposed as a toolbox category.
 
 | Category | Toolbox status | Runtime status and limitation |
 | --- | --- | --- |
-| Motion | Present, including tank, single motor, omni, steering gear, and legacy motion helpers | Differential-drive motor blocks run; encoder and omni blocks emit diagnostics where the simulator has no matching hardware. Steering gear is telemetry-only. |
+| Motion | Present, including tank, single motor, omni, and steering gear blocks from WhalesBot Block Studio | Differential-drive motor blocks run; encoder and omni blocks emit diagnostics where the simulator has no matching hardware. Steering gear is telemetry-only. |
 | Light Speaker | Present | Sound, LED, display, and electromagnet blocks emit telemetry events. `reading 1` is an intentional stub diagnostic. Color fields use hex text in the current Blockly package because the colour field plugin is not registered. |
 | Sensor | Present | Integrated grayscale, timer, and motor encoder paths are implemented where simulator data exists. Other hardware sensors are preserved as value/boolean expressions or stub diagnostics. |
 | Event | Present | `When program execute` is treated as the main entry marker. Touch-switch async events are preserved and emit a stub diagnostic. |
@@ -56,7 +56,7 @@ blocks, C Code disabled behavior, and a mixed-category QA workspace.
 | Motion | `motion_single_motor_seconds` | `set motor A power 40 % run for 1 secs.` | statement | implemented | `motor=A`, `power=40%`, `seconds=1` |
 | Motion | `motion_dual_motor_degrees` | `set motor A power 40 % motor B power 40 % rotate for 360 degrees` | statement | stub | `motorA=A`, `powerA=40%`, `motorB=B`, `powerB=40%`, `degrees=360` |
 | Motion | `motion_single_motor_degrees` | `set motor A power 40 % rotate for 360 degrees` | statement | stub | `motor=A`, `power=40%`, `degrees=360` |
-| Motion | `motion_reverse_motor` | `reverse motor A` | statement | stub | `motor=A` |
+| Motion | `motion_reverse_motor` | `reverse motor A` | statement | implemented | `motor=A` |
 | Motion | `motion_stop_motor` | `stop motor all` | statement | implemented | `motor=all/A/B/C/D` |
 | Motion | `motion_omni_move` | `omni-wheel move power 40 % towards 0 degree` | statement | stub | `power=40%`, `headingDegrees=0` |
 | Motion | `motion_omni_turn` | `omni-wheel turn Turn left power 40 %` | statement | stub | `direction=Turn left/Turn right`, `power=40%` |

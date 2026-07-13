@@ -67,8 +67,10 @@ export interface BlockRegistryEntry {
   notes?: string;
 }
 
-const MOTOR_PORTS = ["A", "B", "C", "D", "all"] as const;
+const MOTOR_PORTS = ["A", "B", "C", "D"] as const;
+const MOTOR_PORTS_WITH_ALL = ["all", "A", "B", "C", "D"] as const;
 const PORTS = ["1", "2", "3", "4", "5"] as const;
+const STEERING_IDS = ["1", "2", "3", "4", "5", "6", "7", "8"] as const;
 const DIRECTIONS = ["Forward", "Backward"] as const;
 const TURN_DIRECTIONS = ["Turn left", "Turn right"] as const;
 const BRANCHES = ["left", "middle", "right", "T/Cross intersection"] as const;
@@ -249,7 +251,7 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     category: "Motion",
     displayText: "stop motor all",
     kind: "statement",
-    fields: [field("motor", "dropdown", "all", { values: MOTOR_PORTS })],
+    fields: [field("motor", "dropdown", "all", { values: MOTOR_PORTS_WITH_ALL })],
     runtimeStatus: "implemented",
     generatorHandlerId: "motion.stopMotor",
     runtimeHandlerId: "runtime.motor.stop",
@@ -300,7 +302,7 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     displayText: "set up steering gear angle mode ID 1 speed 40 angle 0",
     kind: "statement",
     fields: [
-      field("id", "number", 1, { min: 1 }),
+      field("id", "dropdown", "1", { values: STEERING_IDS }),
       field("speed", "number", 40, { min: 0, max: 100 }),
       field("angle", "number", 0, { unit: "degrees" }),
     ],
@@ -315,7 +317,7 @@ export const WHALESBOT_BLOCK_REGISTRY = [
     displayText: "set up steering gear rotation mode ID 1 speed 40",
     kind: "statement",
     fields: [
-      field("id", "number", 1, { min: 1 }),
+      field("id", "dropdown", "1", { values: STEERING_IDS }),
       field("speed", "number", 40, { min: -100, max: 100 }),
     ],
     runtimeStatus: "telemetry-only",
