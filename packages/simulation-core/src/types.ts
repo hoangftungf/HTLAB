@@ -67,6 +67,41 @@ export const DEFAULT_SENSOR_STATE: SensorState = {
   thresholds: { white: 100, black: 200 },
 };
 
+// ---- Runtime side effects and compatibility state ----
+
+export type MotorEncoderPort = "A" | "B" | "C" | "D";
+
+export type TelemetryEventKind = "effect" | "diagnostic" | "state";
+
+export type TelemetryEventSeverity = "info" | "warning" | "error";
+
+export type TelemetryEventPayloadValue = string | number | boolean | null;
+
+export interface TelemetryEventSource {
+  blockId?: string;
+  blockType?: string;
+  category?: string;
+  label?: string;
+}
+
+export interface TelemetryEvent {
+  tick: number;
+  sequence: number;
+  kind: TelemetryEventKind;
+  op: string;
+  label: string;
+  payload: Record<string, TelemetryEventPayloadValue>;
+  severity?: TelemetryEventSeverity;
+  code?: string;
+  source?: TelemetryEventSource;
+}
+
+export interface RuntimeState {
+  timerStartTick: number;
+  motorEncoders: Record<MotorEncoderPort, number>; // degrees since last reset
+  events: TelemetryEvent[];
+}
+
 // ---- Trạng thái mô phỏng ----
 
 export interface SimState {
@@ -75,6 +110,7 @@ export interface SimState {
   done: boolean;
   robot: RobotState;
   sensors: SensorState;
+  runtime: RuntimeState;
 }
 
 // ---- Sa bàn ----
@@ -114,6 +150,10 @@ export interface Simulation {
   reset(): void;
   getTelemetry(): TelemetryFrame[];
   calibrateGrayscale(): void;
+  resetTimer(): void;
+  resetMotorEncoder(port?: MotorEncoderPort | "all"): void;
+  recordEvent(event: Omit<TelemetryEvent, "tick" | "sequence">): void;
+  getEvents(): TelemetryEvent[];
 }
 
 // ---- Telemetry ----
@@ -123,6 +163,7 @@ export interface TelemetryFrame {
   robot: RobotState;
   sensors: SensorState;
   motorTargets: { left: number; right: number };
+  runtime: RuntimeState;
 }
 
 // ---- Động học ----

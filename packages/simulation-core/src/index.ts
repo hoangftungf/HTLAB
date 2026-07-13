@@ -48,6 +48,12 @@ export type {
   MapData,
   MapMetadata,
   TelemetryFrame,
+  TelemetryEvent,
+  TelemetryEventKind,
+  TelemetryEventSeverity,
+  TelemetryEventPayloadValue,
+  RuntimeState,
+  MotorEncoderPort,
   WheelVelocities,
   Pose,
 } from "./types.js";

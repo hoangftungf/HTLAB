@@ -1,5 +1,5 @@
 import { createRNG, type RNG } from "../rng.js";
-import { type Simulation } from "../types.js";
+import { type MotorEncoderPort, type Simulation, type TelemetryEventPayloadValue } from "../types.js";
 import {
   CompareOp,
   OpCode,
@@ -91,6 +91,10 @@ type ActiveMotion =
       source?: IRSourceRef;
       diagnosticsIssued: boolean;
     };
+
+function isMotorEncoderPort(value: string): value is MotorEncoderPort {
+  return value === "A" || value === "B" || value === "C" || value === "D";
+}
 
 function compare(a: number, op: CompareOp, b: number): boolean {
   switch (op) {
@@ -424,6 +428,53 @@ function createV2Interpreter(
 
   function pushDiagnostic(diagnostic: IRDiagnostic): void {
     diagnostics.push(diagnostic);
+    sim.recordEvent({
+      kind: "diagnostic",
+      op: diagnostic.handlerId ?? diagnostic.source?.blockType ?? diagnostic.code,
+      label: diagnostic.message,
+      payload: {
+        code: diagnostic.code,
+        runtimeStatus: diagnostic.runtimeStatus ?? null,
+      },
+      severity: diagnostic.severity,
+      code: diagnostic.code,
+      source: diagnostic.source,
+    });
+  }
+
+  function recordEffect(command: IRCommandV2, label: string, payload: Record<string, TelemetryEventPayloadValue>): void {
+    sim.recordEvent({
+      kind: "effect",
+      op: command.op,
+      label,
+      payload,
+      severity: "info",
+      source: command.source,
+    });
+  }
+
+  function payloadValue(value: IRFieldValue | undefined): TelemetryEventPayloadValue {
+    if (value === undefined) return null;
+    if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return value;
+    }
+    if ("kind" in value) {
+      const kind = value.kind;
+      if (kind === "literal" || kind === "variable" || kind === "sensor" || kind === "unary" || kind === "binary" || kind === "call" || kind === "c-code") {
+        const evaluated = evalValue(value as IRValueExpression);
+        return payloadValue(evaluated);
+      }
+      return evalBoolean(value as IRBooleanExpression);
+    }
+    return null;
+  }
+
+  function payloadFromArgs(command: IRCommandV2): Record<string, TelemetryEventPayloadValue> {
+    const payload: Record<string, TelemetryEventPayloadValue> = {};
+    for (const [key, value] of Object.entries(command.args)) {
+      payload[key] = payloadValue(value);
+    }
+    return payload;
   }
 
   function clampPower(value: number): number {
@@ -640,10 +691,45 @@ function createV2Interpreter(
   function readSensorValue(expression: Extract<IRValueExpression, { kind: "sensor" }>): number {
     const sensor = expression.sensor.toLowerCase();
     if (sensor.includes("line-position")) return sim.state.sensors.linePosition;
-    if (sensor.includes("timer")) return sim.state.tick;
+    if (sensor.includes("timer")) return sim.state.tick - sim.state.runtime.timerStartTick;
+    if (sensor.includes("motor-encoder")) {
+      const port = toText(expression.port, "A").toUpperCase();
+      if (isMotorEncoderPort(port)) {
+        if (port === "C" || port === "D") {
+          pushDiagnostic(createDiagnostic("HTLAB_ENCODER_PORT_UNMAPPED", `Motor encoder ${port} is present but not mapped to the differential-drive physics model.`));
+        }
+        return sim.state.runtime.motorEncoders[port];
+      }
+      pushDiagnostic(createDiagnostic("HTLAB_ENCODER_PORT_INVALID", `Motor encoder port ${port} is not valid.`));
+      return 0;
+    }
+    if (sensor.includes("single-grayscale")) {
+      const channel = Math.max(1, Math.min(5, Number(expression.port ?? expression.channel ?? 1)));
+      return sim.state.sensors.roads[channel - 1];
+    }
     if (sensor.includes("grayscale")) {
       const channel = Math.max(1, Math.min(5, expression.channel ?? 1));
       return sim.state.sensors.roads[channel - 1];
+    }
+    if (sensor.includes("ultrasonic")) {
+      pushDiagnostic(createDiagnostic("HTLAB_ULTRASONIC_PLACEHOLDER", "Ultrasonic distance is a placeholder and returned 0 cm."));
+      return 0;
+    }
+    if (sensor.includes("ai.")) {
+      pushDiagnostic(createDiagnostic("HTLAB_AI_STUB", `${expression.sensor} requires an AI runtime and returned 0.`));
+      return 0;
+    }
+    if (
+      sensor.includes("infrared") ||
+      sensor.includes("ambient") ||
+      sensor.includes("temperature") ||
+      sensor.includes("humidity") ||
+      sensor.includes("flame") ||
+      sensor.includes("volume") ||
+      sensor.includes("color")
+    ) {
+      pushDiagnostic(createDiagnostic("HTLAB_SENSOR_PLACEHOLDER", `Sensor value ${expression.sensor} is not simulated and returned 0.`));
+      return 0;
     }
     pushDiagnostic(createDiagnostic("HTLAB_SENSOR_UNSUPPORTED", `Sensor value ${expression.sensor} is not simulated.`));
     return 0;
@@ -662,6 +748,19 @@ function createV2Interpreter(
     if (sensor.includes("grayscale")) {
       const value = readSensorValue({ kind: "sensor", sensor: expression.sensor, port: expression.port, channel: expression.channel });
       return value > 50;
+    }
+    if (sensor.includes("ai.")) {
+      pushDiagnostic(createDiagnostic("HTLAB_AI_STUB", `${expression.sensor} requires an AI runtime and returned false.`));
+      return false;
+    }
+    if (
+      sensor.includes("touch") ||
+      sensor.includes("infrared") ||
+      sensor.includes("magnetic") ||
+      sensor.includes("color")
+    ) {
+      pushDiagnostic(createDiagnostic("HTLAB_SENSOR_BOOLEAN_PLACEHOLDER", `Sensor boolean ${expression.sensor} is not simulated and returned false.`));
+      return false;
     }
     pushDiagnostic(createDiagnostic("HTLAB_SENSOR_BOOLEAN_UNSUPPORTED", `Sensor boolean ${expression.sensor} is not simulated.`));
     return false;
@@ -969,9 +1068,22 @@ function createV2Interpreter(
 
       case "motion.setMotorPairForEncoderDegrees":
       case "motion.setMotorForEncoderDegrees":
-      case "sensor.motorEncoder":
-      case "sensor.resetMotorEncoder":
         pushDiagnostic(createDiagnostic("HTLAB_ENCODER_UNSUPPORTED", "Encoder/angle motor control is not available in the current simulator.", command.source));
+        frame.index++;
+        return false;
+
+      case "sensor.resetMotorEncoder": {
+        const port = motorPort(command.args.motor, "all");
+        if (port === "C" || port === "D") {
+          pushDiagnostic(createDiagnostic("HTLAB_ENCODER_PORT_UNMAPPED", `Motor encoder ${port} reset is tracked, but the port is not mapped to the differential-drive physics model.`, command.source, "info"));
+        }
+        sim.resetMotorEncoder(port);
+        frame.index++;
+        return false;
+      }
+
+      case "sensor.resetTimer":
+        sim.resetTimer();
         frame.index++;
         return false;
 
@@ -985,7 +1097,7 @@ function createV2Interpreter(
       case "motion.steeringGearAngle":
       case "motion.steeringGearRotation":
       case "motion.restoreSteeringTorque":
-        pushDiagnostic(createDiagnostic("HTLAB_TELEMETRY_ONLY", `${command.op} recorded as telemetry-only; robot physics unchanged.`, command.source, "info"));
+        recordEffect(command, `${command.op} telemetry`, payloadFromArgs(command));
         frame.index++;
         return false;
 
@@ -1052,6 +1164,29 @@ function createV2Interpreter(
 
       case "compat.startButton":
         pushDiagnostic(createDiagnostic("HTLAB_START_BUTTON_STUB", "Start button is an intentional no-op compatibility block.", command.source, "info"));
+        frame.index++;
+        return false;
+
+      case "compat.reading1":
+        pushDiagnostic(createDiagnostic("HTLAB_READING1_STUB", "reading 1 is an intentional compatibility stub and has no simulator effect.", command.source));
+        frame.index++;
+        return false;
+
+      case "effect.playSound":
+      case "effect.setLedRgb":
+      case "effect.setLedColor":
+      case "effect.turnOffLed":
+      case "effect.emotionExpression":
+      case "effect.clearEmotionExpressions":
+      case "effect.emotionSymbol":
+      case "effect.emotionMatrix":
+      case "effect.clearEmotionScreen":
+      case "effect.digitalTubeDisplay":
+      case "effect.clearDigitalTube":
+      case "effect.screenDisplay":
+      case "effect.clearScreen":
+      case "effect.electromagnet":
+        recordEffect(command, `${command.op} event`, payloadFromArgs(command));
         frame.index++;
         return false;
 

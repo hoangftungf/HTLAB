@@ -11,7 +11,7 @@ export const toolbox: any = {
     {
       kind: "category",
       name: "Hardware",
-      colour: 230,
+      colour: "#5b7cff",
       contents: [
         { kind: "block", type: "initialize" },
         { kind: "block", type: "calibrate_grayscale" },
@@ -20,7 +20,7 @@ export const toolbox: any = {
     {
       kind: "category",
       name: "Movement",
-      colour: 120,
+      colour: "#ff4f7b",
       contents: [
         { kind: "block", type: "patrol_line" },
         { kind: "block", type: "turn_left" },
@@ -64,7 +64,7 @@ export const toolbox: any = {
     {
       kind: "category",
       name: "Sensors",
-      colour: 290,
+      colour: "#8b5cf6",
       contents: [
         { kind: "block", type: "read_sensor_road" },
         { kind: "block", type: "sensor_group_detected" },
@@ -73,12 +73,82 @@ export const toolbox: any = {
         { kind: "block", type: "value_line_position" },
         { kind: "block", type: "logic_sensor_group" },
         { kind: "block", type: "remote_control_button" },
+        { kind: "block", type: "sensor_integrated_grayscale_value" },
+        { kind: "block", type: "sensor_integrated_grayscale_detect_black" },
+        { kind: "block", type: "sensor_single_grayscale_value" },
+        { kind: "block", type: "sensor_single_grayscale_detect_black" },
+        { kind: "block", type: "sensor_current_timer_value" },
+        { kind: "block", type: "sensor_reset_timer" },
+        { kind: "block", type: "sensor_motor_encoder_value" },
+        { kind: "block", type: "sensor_reset_motor_encoder" },
+        { kind: "block", type: "sensor_ultrasonic_distance" },
+        { kind: "block", type: "sensor_ambient_light_value" },
+        { kind: "block", type: "sensor_temperature_celsius" },
+        { kind: "block", type: "sensor_humidity_percent" },
+        { kind: "block", type: "sensor_flame_value" },
+        { kind: "block", type: "sensor_volume_detection" },
+        { kind: "block", type: "sensor_touch_switch_pressed" },
+        { kind: "block", type: "sensor_infrared_obstacle" },
+        { kind: "block", type: "sensor_infrared_range_value" },
+        { kind: "block", type: "sensor_magnetic_detected" },
+        { kind: "block", type: "sensor_remote_control_button" },
+        { kind: "block", type: "sensor_color_value" },
+        { kind: "block", type: "sensor_color_detected" },
+      ],
+    },
+    {
+      kind: "category",
+      name: "Light Speaker",
+      colour: "#5aa2ff",
+      contents: [
+        { kind: "block", type: "light_play_sound" },
+        { kind: "block", type: "light_led_rgb" },
+        { kind: "block", type: "light_led_swatch" },
+        { kind: "block", type: "light_led_off" },
+        { kind: "block", type: "light_emotion_expression" },
+        { kind: "block", type: "light_clear_emotion_expressions" },
+        { kind: "block", type: "light_emotion_symbols" },
+        { kind: "block", type: "light_emotion_customization" },
+        { kind: "block", type: "light_clear_emotion_screen" },
+        {
+          kind: "block",
+          type: "light_digital_tube_display",
+          inputs: {
+            value: { shadow: { type: "value_number", fields: { NUM: 0 } } },
+          },
+        },
+        { kind: "block", type: "light_clear_digital_tube" },
+        {
+          kind: "block",
+          type: "light_screen_display",
+          inputs: {
+            value: { shadow: { type: "value_number", fields: { NUM: 1 } } },
+          },
+        },
+        { kind: "block", type: "light_clear_screen" },
+        { kind: "block", type: "light_electromagnet" },
+        { kind: "block", type: "light_reading_1" },
+      ],
+    },
+    {
+      kind: "category",
+      name: "AI",
+      colour: "#6574ff",
+      contents: [
+        { kind: "block", type: "ai_image_recognition" },
+        {
+          kind: "block",
+          type: "ai_recognition_is",
+          inputs: {
+            input: { shadow: { type: "value_number", fields: { NUM: 0 } } },
+          },
+        },
       ],
     },
     {
       kind: "category",
       name: "Values",
-      colour: 45,
+      colour: "#f2c94c",
       contents: [
         { kind: "block", type: "value_number" },
         { kind: "block", type: "value_variable" },
@@ -118,7 +188,7 @@ export const toolbox: any = {
     {
       kind: "category",
       name: "Logic",
-      colour: 210,
+      colour: "#24bdf2",
       contents: [
         { kind: "block", type: "if_sensor" },
         { kind: "block", type: "repeat_loop" },
@@ -198,7 +268,7 @@ export const toolbox: any = {
     {
       kind: "category",
       name: "Variables",
-      colour: 330,
+      colour: "#d6b51d",
       contents: [
         { kind: "block", type: "set_var" },
         {
@@ -214,7 +284,7 @@ export const toolbox: any = {
     {
       kind: "category",
       name: "Patrol line",
-      colour: 30,
+      colour: "#ff7a2f",
       contents: [
         { kind: "block", type: "patrol_initialize_tank" },
         { kind: "block", type: "patrol_initialize_omni" },

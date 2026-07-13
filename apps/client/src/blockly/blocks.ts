@@ -11,6 +11,28 @@
  */
 
 import * as Blockly from "blockly";
+import {
+  WHALESBOT_BLOCK_REGISTRY,
+  type BlockCategory,
+  type BlockFieldSchema,
+  type BlockRegistryEntry,
+} from "./blockRegistry.js";
+
+const BLOCK_COLOURS = {
+  hardware: "#5b7cff",
+  movement: "#ff4f7b",
+  sensor: "#8b5cf6",
+  lightSpeaker: "#5aa2ff",
+  event: "#12cfc0",
+  loop: "#ffad33",
+  logic: "#24bdf2",
+  values: "#f2c94c",
+  variables: "#d6b51d",
+  ai: "#6574ff",
+  patrolLine: "#ff7a2f",
+  myBlocks: "#2f6dff",
+  cCode: "#ff7a2f",
+} as const;
 
 // ---- Phần cứng ----
 
@@ -19,7 +41,7 @@ Blockly.Blocks["initialize"] = {
     this.jsonInit({
       type: "initialize",
       message0: "Initialize robot",
-      colour: 230,
+      colour: BLOCK_COLOURS.hardware,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Reset robot to starting position on the map",
@@ -32,7 +54,7 @@ Blockly.Blocks["calibrate_grayscale"] = {
     this.jsonInit({
       type: "calibrate_grayscale",
       message0: "Calibrate grayscale sensors",
-      colour: 230,
+      colour: BLOCK_COLOURS.hardware,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Sample white floor then black line to calibrate sensors. Place robot on white first.",
@@ -62,7 +84,7 @@ Blockly.Blocks["patrol_line"] = {
           precision: 0.1,
         },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Follow a line using the center sensor. Robot turns to stay on the line.",
@@ -82,7 +104,7 @@ Blockly.Blocks["turn_left"] = {
           options: [["low", "low"], ["medium", "medium"], ["high", "high"]],
         },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Turn the robot left",
@@ -102,7 +124,7 @@ Blockly.Blocks["turn_right"] = {
           options: [["low", "low"], ["medium", "medium"], ["high", "high"]],
         },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Turn the robot right",
@@ -146,7 +168,7 @@ Blockly.Blocks["start_motor"] = {
           precision: 0.1,
         },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set motor speeds for a duration in seconds",
@@ -168,7 +190,7 @@ Blockly.Blocks["read_sensor_road"] = {
           options: [["1 (left)", "1"], ["2", "2"], ["3 (center)", "3"], ["4", "4"], ["5 (right)", "5"]],
         },
       ],
-      colour: 290,
+      colour: BLOCK_COLOURS.sensor,
       output: "Number",
       tooltip: "Read a single grayscale sensor value (0-100)",
     });
@@ -187,7 +209,7 @@ Blockly.Blocks["sensor_group_detected"] = {
           options: [["left", "0"], ["middle", "1"], ["right", "2"]],
         },
       ],
-      colour: 290,
+      colour: BLOCK_COLOURS.sensor,
       output: "Boolean",
       tooltip: "Check if any sensor in a group (left/middle/right) detects the line",
     });
@@ -199,7 +221,7 @@ Blockly.Blocks["line_position"] = {
     this.jsonInit({
       type: "line_position",
       message0: "Line position",
-      colour: 290,
+      colour: BLOCK_COLOURS.sensor,
       output: "Number",
       tooltip: "Read weighted line position (-100 to +100). 0 = centered.",
     });
@@ -234,7 +256,7 @@ Blockly.Blocks["if_sensor"] = {
       ],
       message1: "do %1",
       args1: [{ type: "input_statement", name: "DO" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Check a sensor value and run the do-block if condition is true",
@@ -258,7 +280,7 @@ Blockly.Blocks["repeat_loop"] = {
       ],
       message1: "do %1",
       args1: [{ type: "input_statement", name: "DO" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Repeat the enclosed blocks N times",
@@ -281,7 +303,7 @@ Blockly.Blocks["wait_block"] = {
           precision: 0.01,
         },
       ],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Wait (pause) for N seconds. Motors keep running.",
@@ -310,7 +332,7 @@ Blockly.Blocks["set_var"] = {
           max: 999,
         },
       ],
-      colour: 330,
+      colour: BLOCK_COLOURS.variables,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Store a value in a variable (v0-v7)",
@@ -329,7 +351,7 @@ Blockly.Blocks["motion_set_motors_v2"] = {
         { type: "input_value", name: "LEFT", check: "Number" },
         { type: "input_value", name: "RIGHT", check: "Number" },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set left and right motor power from value expressions",
@@ -347,7 +369,7 @@ Blockly.Blocks["motion_set_motors_for_time_v2"] = {
         { type: "input_value", name: "RIGHT", check: "Number" },
         { type: "input_value", name: "SECONDS", check: "Number" },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set motors for a duration computed from a value expression",
@@ -361,7 +383,7 @@ Blockly.Blocks["value_number"] = {
       type: "value_number",
       message0: "%1",
       args0: [{ type: "field_number", name: "NUM", value: 0 }],
-      colour: 45,
+      colour: BLOCK_COLOURS.values,
       output: "Number",
       tooltip: "Number value",
     });
@@ -380,7 +402,7 @@ Blockly.Blocks["value_variable"] = {
           options: [["v0", "v0"], ["v1", "v1"], ["v2", "v2"], ["v3", "v3"], ["v4", "v4"], ["v5", "v5"], ["v6", "v6"], ["v7", "v7"]],
         },
       ],
-      colour: 330,
+      colour: BLOCK_COLOURS.variables,
       output: "Number",
       tooltip: "Read a numeric variable",
     });
@@ -400,7 +422,7 @@ Blockly.Blocks["set_var_v2"] = {
         },
         { type: "input_value", name: "VALUE", check: "Number" },
       ],
-      colour: 330,
+      colour: BLOCK_COLOURS.variables,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set a variable from a value expression",
@@ -420,7 +442,7 @@ Blockly.Blocks["value_sensor_road"] = {
           options: [["1 (left)", "1"], ["2", "2"], ["3 (center)", "3"], ["4", "4"], ["5 (right)", "5"]],
         },
       ],
-      colour: 290,
+      colour: BLOCK_COLOURS.sensor,
       output: "Number",
       tooltip: "Read a grayscale sensor as a numeric value",
     });
@@ -432,7 +454,7 @@ Blockly.Blocks["value_line_position"] = {
     this.jsonInit({
       type: "value_line_position",
       message0: "Line position",
-      colour: 290,
+      colour: BLOCK_COLOURS.sensor,
       output: "Number",
       tooltip: "Read the current line position",
     });
@@ -453,7 +475,7 @@ Blockly.Blocks["math_binary"] = {
         },
         { type: "input_value", name: "B", check: "Number" },
       ],
-      colour: 45,
+      colour: BLOCK_COLOURS.values,
       output: "Number",
       tooltip: "Combine two numeric value expressions",
     });
@@ -469,7 +491,7 @@ Blockly.Blocks["math_remainder"] = {
         { type: "input_value", name: "A", check: "Number" },
         { type: "input_value", name: "B", check: "Number" },
       ],
-      colour: 45,
+      colour: BLOCK_COLOURS.values,
       output: "Number",
       tooltip: "Remainder after division",
     });
@@ -494,7 +516,7 @@ Blockly.Blocks["math_unary"] = {
           options: [["degrees", "degree"], ["radians", "radian"]],
         },
       ],
-      colour: 45,
+      colour: BLOCK_COLOURS.values,
       output: "Number",
       tooltip: "Apply a numeric function",
     });
@@ -510,7 +532,7 @@ Blockly.Blocks["math_random_range"] = {
         { type: "input_value", name: "MIN", check: "Number" },
         { type: "input_value", name: "MAX", check: "Number" },
       ],
-      colour: 45,
+      colour: BLOCK_COLOURS.values,
       output: "Number",
       tooltip: "Deterministic random integer in range",
     });
@@ -529,7 +551,7 @@ Blockly.Blocks["logic_literal_v2"] = {
           options: [["true", "TRUE"], ["false", "FALSE"]],
         },
       ],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       output: "Boolean",
       tooltip: "Boolean value",
     });
@@ -550,7 +572,7 @@ Blockly.Blocks["logic_compare_v2"] = {
         },
         { type: "input_value", name: "B", check: "Number" },
       ],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       output: "Boolean",
       tooltip: "Compare two value expressions",
     });
@@ -571,7 +593,7 @@ Blockly.Blocks["logic_operation_v2"] = {
         },
         { type: "input_value", name: "B", check: "Boolean" },
       ],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       output: "Boolean",
       tooltip: "Combine boolean expressions",
     });
@@ -584,7 +606,7 @@ Blockly.Blocks["logic_not_v2"] = {
       type: "logic_not_v2",
       message0: "not %1",
       args0: [{ type: "input_value", name: "BOOL", check: "Boolean" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       output: "Boolean",
       tooltip: "Invert a boolean expression",
     });
@@ -603,7 +625,7 @@ Blockly.Blocks["logic_sensor_group"] = {
           options: [["left", "0"], ["middle", "1"], ["right", "2"]],
         },
       ],
-      colour: 290,
+      colour: BLOCK_COLOURS.sensor,
       output: "Boolean",
       tooltip: "Check a grayscale sensor group",
     });
@@ -622,7 +644,7 @@ Blockly.Blocks["remote_control_button"] = {
           options: [["A", "A"], ["B", "B"], ["C", "C"], ["D", "D"]],
         },
       ],
-      colour: 290,
+      colour: BLOCK_COLOURS.sensor,
       output: "Boolean",
       tooltip: "Remote control compatibility stub; returns false in simulation",
     });
@@ -637,7 +659,7 @@ Blockly.Blocks["control_if_v2"] = {
       args0: [{ type: "input_value", name: "COND", check: "Boolean" }],
       message1: "do %1",
       args1: [{ type: "input_statement", name: "THEN" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Run blocks when a boolean expression is true",
@@ -655,7 +677,7 @@ Blockly.Blocks["control_if_else_v2"] = {
       args1: [{ type: "input_statement", name: "THEN" }],
       message2: "else %1",
       args2: [{ type: "input_statement", name: "ELSE" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Run one of two branches",
@@ -671,7 +693,7 @@ Blockly.Blocks["control_repeat_times_v2"] = {
       args0: [{ type: "input_value", name: "TIMES", check: "Number" }],
       message1: "do %1",
       args1: [{ type: "input_statement", name: "DO" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Repeat blocks a computed number of times",
@@ -686,7 +708,7 @@ Blockly.Blocks["control_repeat_forever"] = {
       message0: "Repeat forever",
       message1: "do %1",
       args1: [{ type: "input_statement", name: "DO" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Repeat until the interpreter loop guard stops the program",
@@ -702,7 +724,7 @@ Blockly.Blocks["control_repeat_until"] = {
       args0: [{ type: "input_value", name: "COND", check: "Boolean" }],
       message1: "do %1",
       args1: [{ type: "input_statement", name: "DO" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Repeat blocks until a boolean expression is true",
@@ -716,7 +738,7 @@ Blockly.Blocks["wait_seconds_v2"] = {
       type: "wait_seconds_v2",
       message0: "Wait %1 sec",
       args0: [{ type: "input_value", name: "SECONDS", check: "Number" }],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Wait for a computed duration",
@@ -733,7 +755,7 @@ Blockly.Blocks["control_wait_until"] = {
         { type: "input_value", name: "COND", check: "Boolean" },
         { type: "input_value", name: "TIMEOUT", check: "Number" },
       ],
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Wait until a boolean expression becomes true or times out",
@@ -746,7 +768,7 @@ Blockly.Blocks["control_break"] = {
     this.jsonInit({
       type: "control_break",
       message0: "Break loop",
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Exit the nearest running loop",
@@ -759,7 +781,7 @@ Blockly.Blocks["control_return"] = {
     this.jsonInit({
       type: "control_return",
       message0: "Return",
-      colour: 210,
+      colour: BLOCK_COLOURS.logic,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Stop program execution",
@@ -787,7 +809,7 @@ Blockly.Blocks["motion_tank_drive_continuous"] = {
         { type: "field_dropdown", name: "direction", options: DIRECTION_OPTIONS },
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Drive the differential left/right motor pair continuously",
@@ -807,7 +829,7 @@ Blockly.Blocks["motion_tank_drive_seconds"] = {
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
         { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Drive the motor pair for a duration, then stop",
@@ -824,7 +846,7 @@ Blockly.Blocks["motion_stop_pair"] = {
         { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Stop the differential motor pair",
@@ -841,7 +863,7 @@ Blockly.Blocks["motion_single_motor_power"] = {
         { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set one differential motor where A=left and B=right",
@@ -861,7 +883,7 @@ Blockly.Blocks["motion_dual_motor_seconds"] = {
         { type: "field_number", name: "powerB", value: 40, min: -100, max: 100 },
         { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set two motors for a duration, then stop",
@@ -879,7 +901,7 @@ Blockly.Blocks["motion_single_motor_seconds"] = {
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
         { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Set one motor for a duration, then stop",
@@ -899,7 +921,7 @@ Blockly.Blocks["motion_dual_motor_degrees"] = {
         { type: "field_number", name: "powerB", value: 40, min: -100, max: 100 },
         { type: "field_number", name: "degrees", value: 360 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Encoder-based motion currently emits a diagnostic",
@@ -917,7 +939,7 @@ Blockly.Blocks["motion_single_motor_degrees"] = {
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
         { type: "field_number", name: "degrees", value: 360 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Encoder-based motion currently emits a diagnostic",
@@ -931,7 +953,7 @@ Blockly.Blocks["motion_reverse_motor"] = {
       type: "motion_reverse_motor",
       message0: "Reverse motor %1",
       args0: [{ type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS }],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Reverse the current target for a motor",
@@ -945,7 +967,7 @@ Blockly.Blocks["motion_stop_motor"] = {
       type: "motion_stop_motor",
       message0: "Stop motor %1",
       args0: [{ type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS }],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Stop one motor or all motors",
@@ -962,7 +984,7 @@ Blockly.Blocks["motion_omni_move"] = {
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
         { type: "field_number", name: "headingDegrees", value: 0 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Omni-wheel motion emits a differential-drive diagnostic",
@@ -979,7 +1001,7 @@ Blockly.Blocks["motion_omni_turn"] = {
         { type: "field_dropdown", name: "direction", options: TURN_DIRECTION_OPTIONS },
         { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Omni-wheel turn emits a differential-drive diagnostic",
@@ -992,7 +1014,7 @@ Blockly.Blocks["motion_omni_stop"] = {
     this.jsonInit({
       type: "motion_omni_stop",
       message0: "Stop omni-wheel move",
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Omni-wheel stop emits a diagnostic",
@@ -1010,7 +1032,7 @@ Blockly.Blocks["motion_steering_angle_mode"] = {
         { type: "field_number", name: "speed", value: 40, min: 0, max: 100 },
         { type: "field_number", name: "angle", value: 0 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Telemetry-only steering gear command",
@@ -1027,7 +1049,7 @@ Blockly.Blocks["motion_steering_rotation_mode"] = {
         { type: "field_number", name: "id", value: 1, min: 1 },
         { type: "field_number", name: "speed", value: 40, min: -100, max: 100 },
       ],
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Telemetry-only steering gear command",
@@ -1040,7 +1062,7 @@ Blockly.Blocks["motion_restore_steering_torque"] = {
     this.jsonInit({
       type: "motion_restore_steering_torque",
       message0: "Restore steering torque",
-      colour: 120,
+      colour: BLOCK_COLOURS.movement,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Telemetry-only steering gear command",
@@ -1060,7 +1082,7 @@ Blockly.Blocks["patrol_initialize_tank"] = {
         { type: "field_number", name: "rightDirection", value: -100 },
         { type: "field_dropdown", name: "grayscalePort", options: SENSOR_PORT_OPTIONS },
       ],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Configure tank-drive patrol line mode",
@@ -1080,7 +1102,7 @@ Blockly.Blocks["patrol_initialize_omni"] = {
         { type: "field_dropdown", name: "leftRearMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "grayscalePort", options: SENSOR_PORT_OPTIONS },
       ],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Omni patrol mode is accepted with a diagnostic approximation",
@@ -1093,7 +1115,7 @@ Blockly.Blocks["patrol_black_white_detection"] = {
     this.jsonInit({
       type: "patrol_black_white_detection",
       message0: "Black and white detection",
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Calibrate grayscale thresholds using the current map samples",
@@ -1107,7 +1129,7 @@ Blockly.Blocks["patrol_line_speed"] = {
       type: "patrol_line_speed",
       message0: "Patrol line speed %1",
       args0: [{ type: "field_number", name: "speed", value: 30, min: 0, max: 100 }],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Follow the line continuously until the patrol timeout guard stops it",
@@ -1124,7 +1146,7 @@ Blockly.Blocks["patrol_line_for_time"] = {
         { type: "field_number", name: "speed", value: 30, min: 0, max: 100 },
         { type: "field_number", name: "seconds", value: 0.5, min: 0, precision: 0.01 },
       ],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Follow the line for a duration",
@@ -1142,7 +1164,7 @@ Blockly.Blocks["patrol_line_intersections"] = {
         { type: "field_number", name: "speed", value: 30, min: 0, max: 100 },
         { type: "field_number", name: "rushSeconds", value: 0, min: 0, precision: 0.01 },
       ],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Follow the line until the sensor pattern looks like an intersection",
@@ -1160,7 +1182,7 @@ Blockly.Blocks["patrol_turn_branch"] = {
         { type: "field_number", name: "leftSpeed", value: 0, min: -100, max: 100 },
         { type: "field_number", name: "rightSpeed", value: 0, min: -100, max: 100 },
       ],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Turn until the selected sensor group detects the line or timeout guard stops it",
@@ -1178,7 +1200,7 @@ Blockly.Blocks["patrol_start_motor_time"] = {
         { type: "field_number", name: "rightSpeed", value: 20, min: -100, max: 100 },
         { type: "field_number", name: "seconds", value: 0.5, min: 0, precision: 0.01 },
       ],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Start both motors for a duration",
@@ -1196,7 +1218,7 @@ Blockly.Blocks["patrol_start_motor_angle"] = {
         { type: "field_number", name: "rightSpeed", value: 20, min: -100, max: 100 },
         { type: "field_number", name: "degrees", value: 360 },
       ],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Encoder-based patrol motion currently emits a diagnostic",
@@ -1216,7 +1238,7 @@ Blockly.Blocks["patrol_start_motor_until_sensor"] = {
         { type: "field_dropdown", name: "compare", options: COMPARE_OPTIONS },
         { type: "field_number", name: "threshold", value: 50 },
       ],
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Run motors until a grayscale sensor condition becomes true",
@@ -1229,10 +1251,97 @@ Blockly.Blocks["patrol_start_button"] = {
     this.jsonInit({
       type: "patrol_start_button",
       message0: "Start button",
-      colour: 30,
+      colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
       tooltip: "Intentional no-op compatibility block",
     });
   },
 };
+
+// Registry-backed compatibility blocks not yet hand-authored above.
+const CATEGORY_COLOURS: Record<BlockCategory, string> = {
+  Motion: BLOCK_COLOURS.movement,
+  "Light Speaker": BLOCK_COLOURS.lightSpeaker,
+  Sensor: BLOCK_COLOURS.sensor,
+  Event: BLOCK_COLOURS.event,
+  Loop: BLOCK_COLOURS.loop,
+  Logic: BLOCK_COLOURS.logic,
+  Math: BLOCK_COLOURS.values,
+  Variable: BLOCK_COLOURS.variables,
+  AI: BLOCK_COLOURS.ai,
+  "Patrol line": BLOCK_COLOURS.patrolLine,
+  "My Blocks": BLOCK_COLOURS.myBlocks,
+  "C Code": BLOCK_COLOURS.cCode,
+};
+
+function fallbackFieldArg(field: BlockFieldSchema): Record<string, unknown> {
+  switch (field.kind) {
+    case "number":
+      return {
+        type: "field_number",
+        name: field.name,
+        value: Number(field.defaultValue ?? 0),
+        ...(field.min !== undefined ? { min: field.min } : {}),
+        ...(field.max !== undefined ? { max: field.max } : {}),
+      };
+    case "text":
+      return { type: "field_input", name: field.name, text: String(field.defaultValue ?? "") };
+    case "dropdown":
+      return {
+        type: "field_dropdown",
+        name: field.name,
+        options: (field.values ?? []).map((value) => [value, value]),
+      };
+    case "color":
+      return { type: "field_colour", name: field.name, colour: String(field.defaultValue ?? "#ffffff") };
+    case "boolean":
+      return { type: "field_checkbox", name: field.name, checked: Boolean(field.defaultValue) };
+    case "value-input":
+      return { type: "input_value", name: field.name };
+    case "boolean-input":
+      return { type: "input_value", name: field.name, check: "Boolean" };
+    case "statement-input":
+      return { type: "input_statement", name: field.name };
+    case "textarea":
+      return { type: "field_multilinetext", name: field.name, text: String(field.defaultValue ?? "") };
+    case "matrix":
+      return { type: "field_input", name: field.name, text: "00000/00000/00000/00000/00000" };
+  }
+}
+
+function fallbackMessage(entry: BlockRegistryEntry): string {
+  const fieldLabels = entry.fields.map((field, index) => `${field.name} %${index + 1}`);
+  return [entry.displayText, ...fieldLabels].join(" ");
+}
+
+function registerRegistryFallbackBlock(entry: BlockRegistryEntry): void {
+  if (Blockly.Blocks[entry.type]) return;
+
+  Blockly.Blocks[entry.type] = {
+    init(this: Blockly.Block) {
+      const config: Record<string, unknown> = {
+        type: entry.type,
+        message0: fallbackMessage(entry),
+        args0: entry.fields.map(fallbackFieldArg),
+        colour: CATEGORY_COLOURS[entry.category],
+        tooltip: entry.notes ?? entry.displayText,
+      };
+
+      if (entry.kind === "boolean") {
+        config.output = "Boolean";
+      } else if (entry.kind === "reporter-number") {
+        config.output = "Number";
+      } else if (entry.kind === "reporter") {
+        config.output = null;
+      } else {
+        config.previousStatement = null;
+        config.nextStatement = null;
+      }
+
+      this.jsonInit(config);
+    },
+  };
+}
+
+WHALESBOT_BLOCK_REGISTRY.forEach(registerRegistryFallbackBlock);

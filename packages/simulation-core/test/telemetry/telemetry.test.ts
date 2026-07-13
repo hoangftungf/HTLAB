@@ -57,6 +57,9 @@ describe("Telemetry recorder", () => {
       expect(typeof f.sensors.linePosition).toBe("number");
       expect(typeof f.motorTargets.left).toBe("number");
       expect(typeof f.motorTargets.right).toBe("number");
+      expect(typeof f.runtime.timerStartTick).toBe("number");
+      expect(typeof f.runtime.motorEncoders.A).toBe("number");
+      expect(Array.isArray(f.runtime.events)).toBe(true);
     });
 
     it("returns a copy (mutation-safe)", () => {

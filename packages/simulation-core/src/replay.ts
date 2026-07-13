@@ -10,9 +10,12 @@
 
 import type { ReplaySimulation } from "./telemetry/index.js";
 import type {
+  MotorEncoderPort,
+  RuntimeState,
   SensorState,
   SimState,
   Simulation,
+  TelemetryEvent,
   TelemetryFrame,
 } from "./types.js";
 
@@ -27,6 +30,27 @@ export function createReplay(telemetry: TelemetryFrame[]): ReplaySimulation {
 
   function currentFrame(): TelemetryFrame | undefined {
     return frames[Math.max(0, Math.min(frameIdx, frames.length - 1))];
+  }
+
+  function emptyRuntime(): RuntimeState {
+    return {
+      timerStartTick: 0,
+      motorEncoders: { A: 0, B: 0, C: 0, D: 0 },
+      events: [],
+    };
+  }
+
+  function copyRuntime(runtime: RuntimeState | undefined): RuntimeState {
+    const source = runtime ?? emptyRuntime();
+    return {
+      timerStartTick: source.timerStartTick,
+      motorEncoders: { ...source.motorEncoders },
+      events: source.events.map((event) => ({
+        ...event,
+        payload: { ...event.payload },
+        source: event.source ? { ...event.source } : undefined,
+      })),
+    };
   }
 
   function buildState(): SimState {
@@ -44,6 +68,7 @@ export function createReplay(telemetry: TelemetryFrame[]): ReplaySimulation {
           calibrated: false,
           thresholds: { white: 100, black: 200 },
         },
+        runtime: emptyRuntime(),
       };
     }
     return {
@@ -55,6 +80,7 @@ export function createReplay(telemetry: TelemetryFrame[]): ReplaySimulation {
         ...f.sensors,
         roads: [...(f.sensors.roads as number[])] as SensorState["roads"],
       },
+      runtime: copyRuntime(f.runtime),
     };
   }
 
@@ -101,6 +127,21 @@ export function createReplay(telemetry: TelemetryFrame[]): ReplaySimulation {
 
     calibrateGrayscale(): void {
       // Không làm gì trong chế độ phát lại
+    },
+    resetTimer(): void {
+      // No-op in replay mode.
+    },
+
+    resetMotorEncoder(_port: MotorEncoderPort | "all" = "all"): void {
+      // No-op in replay mode.
+    },
+
+    recordEvent(_event: Omit<TelemetryEvent, "tick" | "sequence">): void {
+      // No-op in replay mode.
+    },
+
+    getEvents(): TelemetryEvent[] {
+      return copyRuntime(currentFrame()?.runtime).events;
     },
   };
 

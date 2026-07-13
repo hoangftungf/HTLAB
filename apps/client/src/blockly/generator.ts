@@ -155,7 +155,42 @@ const V2_ONLY_BLOCKS = new Set([
   "remote_control_button",
   "sensor_integrated_grayscale_value",
   "sensor_integrated_grayscale_detect_black",
+  "sensor_single_grayscale_detect_black",
+  "sensor_single_grayscale_value",
+  "sensor_ultrasonic_distance",
+  "sensor_ambient_light_value",
+  "sensor_temperature_celsius",
+  "sensor_humidity_percent",
+  "sensor_flame_value",
+  "sensor_magnetic_detected",
+  "sensor_volume_detection",
+  "sensor_motor_encoder_value",
+  "sensor_reset_motor_encoder",
+  "sensor_current_timer_value",
+  "sensor_reset_timer",
   "sensor_remote_control_button",
+  "sensor_touch_switch_pressed",
+  "sensor_infrared_obstacle",
+  "sensor_infrared_range_value",
+  "sensor_color_value",
+  "sensor_color_detected",
+  "light_play_sound",
+  "light_electromagnet",
+  "light_emotion_expression",
+  "light_clear_emotion_expressions",
+  "light_emotion_symbols",
+  "light_emotion_customization",
+  "light_clear_emotion_screen",
+  "light_reading_1",
+  "light_led_rgb",
+  "light_led_swatch",
+  "light_led_off",
+  "light_digital_tube_display",
+  "light_clear_digital_tube",
+  "light_screen_display",
+  "light_clear_screen",
+  "ai_image_recognition",
+  "ai_recognition_is",
   "control_if_v2",
   "control_if_else_v2",
   "control_repeat_times_v2",
@@ -266,6 +301,8 @@ function sourceFor(block: Blockly.Block, category = categoryForType(block.type))
 
 function categoryForType(type: string): string {
   if (type.startsWith("patrol_")) return "Patrol line";
+  if (type.startsWith("light_")) return "Light Speaker";
+  if (type.startsWith("ai_")) return "AI";
   if (type.includes("motion") || type.includes("motor") || type.includes("turn") || type === "patrol_line") return "Movement";
   if (type.includes("sensor") || type.includes("line_position") || type.includes("remote")) return "Sensors";
   if (type.includes("math") || type.includes("value")) return "Values";
@@ -426,6 +463,192 @@ function angleUnitFromField(block: Blockly.Block): "degree" | "radian" {
   return fieldText(block, "ANGLE_UNIT", "degree") === "radian" ? "radian" : "degree";
 }
 
+function sensorValue(sensor: string, port?: string | number, channel?: number): IRValueExpressionLocal {
+  return {
+    kind: "sensor",
+    sensor,
+    ...(port !== undefined ? { port } : {}),
+    ...(channel !== undefined ? { channel } : {}),
+  };
+}
+
+function effectNodeForBlock(block: Blockly.Block): IRCommandNodeLocal | null {
+  switch (block.type) {
+    case "light_play_sound":
+      return commandNode(
+        block,
+        "effect.playSound",
+        {
+          group: fieldText(block, "group", "Greet"),
+          sound: fieldText(block, "sound", "Hello"),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.sound",
+      );
+
+    case "light_electromagnet":
+      return commandNode(
+        block,
+        "effect.electromagnet",
+        {
+          port: fieldText(block, "port", "1"),
+          mode: fieldText(block, "mode", "absorption"),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.electromagnet",
+      );
+
+    case "light_emotion_expression":
+      return commandNode(
+        block,
+        "effect.emotionExpression",
+        {
+          expression: fieldText(block, "expression", "eyes"),
+          leftEyePort: fieldText(block, "leftEyePort", "1"),
+          rightEyePort: fieldText(block, "rightEyePort", "2"),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    case "light_clear_emotion_expressions":
+      return commandNode(
+        block,
+        "effect.clearEmotionExpressions",
+        {
+          leftEyePort: fieldText(block, "leftEyePort", "1"),
+          rightEyePort: fieldText(block, "rightEyePort", "2"),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    case "light_emotion_symbols":
+      return commandNode(
+        block,
+        "effect.emotionSymbol",
+        {
+          symbol: fieldText(block, "symbol", "?"),
+          port: fieldText(block, "port", "1"),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    case "light_emotion_customization":
+      return commandNode(
+        block,
+        "effect.emotionMatrix",
+        {
+          matrix: fieldText(block, "matrix", "00000/00000/00000/00000/00000"),
+          port: fieldText(block, "port", "1"),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    case "light_clear_emotion_screen":
+      return commandNode(
+        block,
+        "effect.clearEmotionScreen",
+        { port: fieldText(block, "port", "1") },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    case "light_led_rgb":
+      return commandNode(
+        block,
+        "effect.setLedRgb",
+        {
+          port: fieldText(block, "port", "1"),
+          r: literal(fieldNumber(block, "r", 255)),
+          g: literal(fieldNumber(block, "g", 255)),
+          b: literal(fieldNumber(block, "b", 255)),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.led",
+      );
+
+    case "light_led_swatch":
+      return commandNode(
+        block,
+        "effect.setLedColor",
+        {
+          port: fieldText(block, "port", "1"),
+          color: fieldText(block, "color", "#ffffff"),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.led",
+      );
+
+    case "light_led_off":
+      return commandNode(
+        block,
+        "effect.turnOffLed",
+        { port: fieldText(block, "port", "1") },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.led",
+      );
+
+    case "light_digital_tube_display":
+      return commandNode(
+        block,
+        "effect.digitalTubeDisplay",
+        {
+          port: fieldText(block, "port", "1"),
+          value: valueFromInput(block, "value", 0),
+        },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    case "light_clear_digital_tube":
+      return commandNode(
+        block,
+        "effect.clearDigitalTube",
+        { port: fieldText(block, "port", "1") },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    case "light_screen_display":
+      return commandNode(
+        block,
+        "effect.screenDisplay",
+        { value: valueFromInput(block, "value", "") },
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    case "light_clear_screen":
+      return commandNode(
+        block,
+        "effect.clearScreen",
+        {},
+        undefined,
+        "telemetry-only",
+        "runtime.telemetry.display",
+      );
+
+    default:
+      return null;
+  }
+}
+
 function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
   switch (block.type) {
     case "math_number":
@@ -443,12 +666,44 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
     case "read_sensor_road":
     case "value_sensor_road":
     case "sensor_integrated_grayscale_value":
-      return {
-        kind: "sensor",
-        sensor: "integrated-grayscale",
-        port: fieldText(block, "port", "builtin"),
-        channel: fieldNumber(block, block.type === "sensor_integrated_grayscale_value" ? "channel" : "ROAD", 3),
-      };
+      return sensorValue(
+        "integrated-grayscale",
+        fieldText(block, "port", "builtin"),
+        fieldNumber(block, block.type === "sensor_integrated_grayscale_value" ? "channel" : "ROAD", 3),
+      );
+
+    case "sensor_single_grayscale_value":
+      return sensorValue("single-grayscale", fieldText(block, "port", "1"));
+
+    case "sensor_ultrasonic_distance":
+      return sensorValue("ultrasonic-distance", fieldText(block, "port", "1"));
+
+    case "sensor_infrared_range_value":
+      return sensorValue("infrared-range", fieldText(block, "port", "1"));
+
+    case "sensor_ambient_light_value":
+      return sensorValue("ambient-light", fieldText(block, "port", "1"));
+
+    case "sensor_temperature_celsius":
+      return sensorValue("temperature-celsius", fieldText(block, "port", "1"));
+
+    case "sensor_humidity_percent":
+      return sensorValue("humidity-percent", fieldText(block, "port", "1"));
+
+    case "sensor_flame_value":
+      return sensorValue("flame-value", fieldText(block, "port", "1"));
+
+    case "sensor_volume_detection":
+      return sensorValue("volume-detection", fieldText(block, "port", "1"));
+
+    case "sensor_motor_encoder_value":
+      return sensorValue("motor-encoder", fieldText(block, "motor", "A"));
+
+    case "sensor_color_value":
+      return sensorValue("color-value", fieldText(block, "port", "1"));
+
+    case "ai_image_recognition":
+      return sensorValue("ai.imageRecognition", fieldText(block, "port", "1"));
 
     case "line_position":
     case "value_line_position":
@@ -557,6 +812,54 @@ function booleanFromBlock(block: Blockly.Block): IRBooleanExpressionLocal {
         predicate: "black",
       };
 
+    case "sensor_single_grayscale_detect_black":
+      return {
+        kind: "sensor",
+        sensor: "single-grayscale",
+        port: fieldText(block, "port", "1"),
+        predicate: "black",
+      };
+
+    case "sensor_touch_switch_pressed":
+      return {
+        kind: "sensor",
+        sensor: "touch-switch",
+        port: fieldText(block, "port", "1"),
+        predicate: "pressed",
+      };
+
+    case "sensor_infrared_obstacle":
+      return {
+        kind: "sensor",
+        sensor: "infrared-obstacle",
+        port: fieldText(block, "port", "1"),
+        predicate: "detected",
+      };
+
+    case "sensor_magnetic_detected":
+      return {
+        kind: "sensor",
+        sensor: "magnetic",
+        port: fieldText(block, "port", "1"),
+        predicate: "detected",
+      };
+
+    case "sensor_color_detected":
+      return {
+        kind: "sensor",
+        sensor: "color-detected",
+        port: fieldText(block, "port", "1"),
+        predicate: fieldText(block, "color", "red"),
+      };
+
+    case "ai_recognition_is":
+      return {
+        kind: "sensor",
+        sensor: "ai.recognitionMatches",
+        port: fieldText(block, "classValue", "0"),
+        predicate: fieldText(block, "classType", "Number"),
+      };
+
     case "read_sensor_road":
     case "value_sensor_road":
       return {
@@ -584,6 +887,9 @@ function blockSequenceToV2Nodes(start: Blockly.Block | null): IRNodeLocal[] {
 }
 
 function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
+  const effectNode = effectNodeForBlock(block);
+  if (effectNode) return [effectNode];
+
   switch (block.type) {
     case "initialize":
       return [commandNode(block, "hardware.initialize")];
@@ -930,6 +1236,33 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
         commandNode(block, "compat.startButton", {}, undefined, "stub", "runtime.diagnostic.intentionalNoop"),
       ];
 
+    case "sensor_reset_timer":
+      return [commandNode(block, "sensor.resetTimer", {}, undefined, "implemented", "runtime.sensor.resetTimer")];
+
+    case "sensor_reset_motor_encoder":
+      return [
+        commandNode(
+          block,
+          "sensor.resetMotorEncoder",
+          { motor: fieldText(block, "motor", "A") },
+          undefined,
+          "implemented",
+          "runtime.sensor.resetMotorEncoder",
+        ),
+      ];
+
+    case "light_reading_1":
+      return [
+        commandNode(
+          block,
+          "compat.reading1",
+          { value: literal(fieldNumber(block, "value", 1)) },
+          undefined,
+          "stub",
+          "runtime.diagnostic.intentionalNoop",
+        ),
+      ];
+
     case "patrol_line":
       return [
         commandNode(
@@ -1080,6 +1413,27 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
     case "logic_not_v2":
     case "logic_sensor_group":
     case "remote_control_button":
+    case "sensor_integrated_grayscale_value":
+    case "sensor_integrated_grayscale_detect_black":
+    case "sensor_single_grayscale_value":
+    case "sensor_single_grayscale_detect_black":
+    case "sensor_ultrasonic_distance":
+    case "sensor_ambient_light_value":
+    case "sensor_temperature_celsius":
+    case "sensor_humidity_percent":
+    case "sensor_flame_value":
+    case "sensor_magnetic_detected":
+    case "sensor_volume_detection":
+    case "sensor_motor_encoder_value":
+    case "sensor_current_timer_value":
+    case "sensor_remote_control_button":
+    case "sensor_touch_switch_pressed":
+    case "sensor_infrared_obstacle":
+    case "sensor_infrared_range_value":
+    case "sensor_color_value":
+    case "sensor_color_detected":
+    case "ai_image_recognition":
+    case "ai_recognition_is":
       return [
         diagnosticNode(
           block,

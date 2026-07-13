@@ -1,5 +1,5 @@
 import React from "react";
-import type { SimState } from "@htlab/simulation-core";
+import type { SimState, TelemetryEvent } from "@htlab/simulation-core";
 
 interface TelemetryPanelProps {
   state: SimState | null;
@@ -76,6 +76,36 @@ function Gauge({ value, min, max, label }: { value: number; min: number; max: nu
   );
 }
 
+function formatPayload(event: TelemetryEvent): string {
+  const entries = Object.entries(event.payload)
+    .filter(([, value]) => value !== null && value !== "")
+    .slice(0, 3);
+  if (entries.length === 0) return "";
+  return entries.map(([key, value]) => `${key}=${String(value)}`).join(" ");
+}
+
+function EventRow({ event }: { event: TelemetryEvent }) {
+  const tone = event.severity === "error"
+    ? "border-red-500/40 bg-red-950/30 text-red-200"
+    : event.severity === "warning"
+      ? "border-amber-500/40 bg-amber-950/30 text-amber-100"
+      : event.kind === "effect"
+        ? "border-cyan-500/40 bg-cyan-950/30 text-cyan-100"
+        : "border-gray-700 bg-gray-900 text-gray-200";
+  const payload = formatPayload(event);
+
+  return (
+    <div className={`rounded border px-2 py-1 ${tone}`}>
+      <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-wide">
+        <span>{event.kind}</span>
+        <span className="font-mono text-gray-400">t{event.tick}</span>
+      </div>
+      <div className="mt-0.5 break-words text-xs">{event.label}</div>
+      {payload ? <div className="mt-0.5 break-words font-mono text-[10px] text-gray-400">{payload}</div> : null}
+    </div>
+  );
+}
+
 export default function TelemetryPanel({ state, tick }: TelemetryPanelProps) {
   if (!state) {
     return (
@@ -85,7 +115,8 @@ export default function TelemetryPanel({ state, tick }: TelemetryPanelProps) {
     );
   }
 
-  const { robot, sensors } = state;
+  const { robot, sensors, runtime } = state;
+  const recentEvents = runtime.events.slice(-8).reverse();
 
   return (
     <div className="flex h-full w-full flex-col gap-4 overflow-y-auto bg-surface p-4 text-sm">
@@ -159,6 +190,21 @@ export default function TelemetryPanel({ state, tick }: TelemetryPanelProps) {
         <span className={sensors.calibrated ? "text-green-400" : "text-red-400"}>
           {sensors.calibrated ? "YES" : "NO"}
         </span>
+      </div>
+
+      <div>
+        <h3 className="text-accent text-xs font-semibold uppercase tracking-wide mb-2">Runtime Events</h3>
+        {recentEvents.length > 0 ? (
+          <div className="space-y-1.5">
+            {recentEvents.map((event) => (
+              <EventRow key={`${event.tick}-${event.sequence}`} event={event} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded border border-gray-800 bg-gray-900 px-2 py-2 text-xs text-gray-500">
+            No events
+          </div>
+        )}
       </div>
     </div>
   );

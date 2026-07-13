@@ -21,13 +21,16 @@ import {
 import {
   DEFAULT_ROBOT_CONFIG,
   DEFAULT_SENSOR_STATE,
+  type MotorEncoderPort,
   type MotorTargets,
   type RobotConfig,
   type RobotState,
+  type RuntimeState,
   type SensorState,
   type SimState,
   type Simulation,
   type SimulationConfig,
+  type TelemetryEvent,
   type TelemetryFrame,
 } from "./types.js";
 
@@ -56,6 +59,10 @@ export function createSimulation(config: SimulationConfig): Simulation {
   let running = false;
   let done = false;
   let motorTargets: MotorTargets = { left: 0, right: 0 };
+  let timerStartTick = 0;
+  let motorEncoders: Record<MotorEncoderPort, number> = { A: 0, B: 0, C: 0, D: 0 };
+  let events: TelemetryEvent[] = [];
+  let eventSequence = 0;
   let telemetry: TelemetryFrame[] = [];
   const maxTelemetryFrames = config.maxTelemetryFrames ?? DEFAULT_MAX_TELEMETRY;
 
@@ -68,17 +75,44 @@ export function createSimulation(config: SimulationConfig): Simulation {
     latency: robotConfig.latency,
   });
 
+  function copyRuntimeState(): RuntimeState {
+    return {
+      timerStartTick,
+      motorEncoders: { ...motorEncoders },
+      events: events.map((event) => ({
+        ...event,
+        payload: { ...event.payload },
+        source: event.source ? { ...event.source } : undefined,
+      })),
+    };
+  }
+
   function recordTelemetry(): void {
     const frame: TelemetryFrame = {
       tick: tickCounter,
       robot: { ...robot },
       sensors: { ...sensors, roads: [...sensors.roads] as SensorState["roads"] },
       motorTargets: { ...motorTargets },
+      runtime: copyRuntimeState(),
     };
     telemetry.push(frame);
     if (telemetry.length > maxTelemetryFrames) {
       telemetry = telemetry.slice(-maxTelemetryFrames);
     }
+  }
+
+  function trimEvents(): void {
+    if (events.length > maxTelemetryFrames) {
+      events = events.slice(-maxTelemetryFrames);
+    }
+  }
+
+  function resetEncoder(port: MotorEncoderPort | "all" = "all"): void {
+    if (port === "all") {
+      motorEncoders = { A: 0, B: 0, C: 0, D: 0 };
+      return;
+    }
+    motorEncoders = { ...motorEncoders, [port]: 0 };
   }
 
   const sim: Simulation = {
@@ -89,6 +123,7 @@ export function createSimulation(config: SimulationConfig): Simulation {
         done,
         robot: { ...robot },
         sensors: { ...sensors, roads: [...sensors.roads] as SensorState["roads"] },
+        runtime: copyRuntimeState(),
       };
     },
 
@@ -104,6 +139,13 @@ export function createSimulation(config: SimulationConfig): Simulation {
         FIXED_DT,
         robotConfig,
       );
+
+      const degreesPerMm = 360 / (2 * Math.PI * robotConfig.wheelRadius);
+      motorEncoders = {
+        ...motorEncoders,
+        A: motorEncoders.A + robot.leftSpeed * FIXED_DT * degreesPerMm,
+        B: motorEncoders.B + robot.rightSpeed * FIXED_DT * degreesPerMm,
+      };
 
       tickCounter++;
       recordTelemetry();
@@ -128,6 +170,10 @@ export function createSimulation(config: SimulationConfig): Simulation {
       running = false;
       done = false;
       motorTargets = { left: 0, right: 0 };
+      timerStartTick = 0;
+      resetEncoder("all");
+      events = [];
+      eventSequence = 0;
       telemetry = [];
       grayscaleSensor.reset();
     },
@@ -143,6 +189,43 @@ export function createSimulation(config: SimulationConfig): Simulation {
 
     getTelemetry(): TelemetryFrame[] {
       return [...telemetry];
+    },
+
+    resetTimer(): void {
+      timerStartTick = tickCounter;
+      this.recordEvent({
+        kind: "state",
+        op: "sensor.resetTimer",
+        label: "Reset timer",
+        payload: { timerStartTick },
+        severity: "info",
+      });
+    },
+
+    resetMotorEncoder(port: MotorEncoderPort | "all" = "all"): void {
+      resetEncoder(port);
+      this.recordEvent({
+        kind: "state",
+        op: "sensor.resetMotorEncoder",
+        label: "Reset motor encoder",
+        payload: { port },
+        severity: "info",
+      });
+    },
+
+    recordEvent(event: Omit<TelemetryEvent, "tick" | "sequence">): void {
+      events.push({
+        ...event,
+        tick: tickCounter,
+        sequence: eventSequence++,
+        payload: { ...event.payload },
+        source: event.source ? { ...event.source } : undefined,
+      });
+      trimEvents();
+    },
+
+    getEvents(): TelemetryEvent[] {
+      return copyRuntimeState().events;
     },
   };
 
