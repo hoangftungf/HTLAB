@@ -495,6 +495,20 @@ function percentPower(value: number): IRValueExpressionLocal {
   return literal(Math.max(-1, Math.min(1, value / 100)));
 }
 
+function scaleValue(value: IRValueExpressionLocal, factor: number): IRValueExpressionLocal {
+  if (value.kind === "literal" && typeof value.value === "number") {
+    return literal(value.value * factor);
+  }
+  return { kind: "binary", op: "*", left: value, right: literal(factor) };
+}
+
+function percentPowerValue(value: IRValueExpressionLocal): IRValueExpressionLocal {
+  if (value.kind === "literal" && typeof value.value === "number") {
+    return percentPower(value.value);
+  }
+  return scaleValue(value, 0.01);
+}
+
 function valueFromInput(block: Blockly.Block, name: string, fallback: IRPrimitiveLocal = 0): IRValueExpressionLocal {
   const child = block.getInputTargetBlock(name);
   return child ? valueFromBlock(child) : literal(fallback);
@@ -508,6 +522,16 @@ function valueFromInputOrField(
 ): IRValueExpressionLocal {
   const child = block.getInputTargetBlock(inputName);
   return child ? valueFromBlock(child) : literal(fieldNumber(block, fieldName, Number(fallback ?? 0)));
+}
+
+function staticNumberFromInputOrField(
+  block: Blockly.Block,
+  inputName: string,
+  fieldName: string,
+  fallback = 0,
+): number {
+  const value = valueFromInputOrField(block, inputName, fieldName, fallback);
+  return value.kind === "literal" && typeof value.value === "number" ? value.value : fallback;
 }
 
 function booleanFromInput(block: Blockly.Block, name: string, fallback = false): IRBooleanExpressionLocal {
@@ -732,9 +756,9 @@ function effectNodeForBlock(block: Blockly.Block): IRCommandNodeLocal | null {
         "effect.setLedRgb",
         {
           port: fieldText(block, "port", "1"),
-          r: literal(fieldNumber(block, "r", 255)),
-          g: literal(fieldNumber(block, "g", 255)),
-          b: literal(fieldNumber(block, "b", 255)),
+          r: valueFromInputOrField(block, "r", "r", 255),
+          g: valueFromInputOrField(block, "g", "g", 255),
+          b: valueFromInputOrField(block, "b", "b", 255),
         },
         undefined,
         "telemetry-only",
@@ -969,8 +993,8 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
         kind: "call",
         callee: "randomRange",
         args: [
-          block.getInput("MIN") ? valueFromInput(block, "MIN", 0) : literal(fieldNumber(block, "min", 0)),
-          block.getInput("MAX") ? valueFromInput(block, "MAX", 10) : literal(fieldNumber(block, "max", 10)),
+          valueFromInputOrField(block, "min", "min", 0),
+          valueFromInputOrField(block, "max", "max", 10),
         ],
       };
 
@@ -1216,34 +1240,36 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       const sign = fieldText(block, "DIR", "forward") === "backward" ? -1 : 1;
       return [
         commandNode(block, "motion.setMotorPairForTime", {
-          left: literal(fieldNumber(block, "LEFT", 0.3) * sign),
-          right: literal(fieldNumber(block, "RIGHT", 0.3) * sign),
-          seconds: literal(fieldNumber(block, "TIME", 1)),
+          left: scaleValue(valueFromInputOrField(block, "LEFT", "LEFT", 0.3), sign),
+          right: scaleValue(valueFromInputOrField(block, "RIGHT", "RIGHT", 0.3), sign),
+          seconds: valueFromInputOrField(block, "TIME", "TIME", 1),
         }),
       ];
     }
 
     case "motion_tank_drive_continuous": {
       const sign = fieldText(block, "direction", "Forward") === "Backward" ? -1 : 1;
+      const power = percentPowerValue(scaleValue(valueFromInputOrField(block, "power", "power", 40), sign));
       return [
         commandNode(block, "motion.setMotorPair", {
           leftMotor: fieldText(block, "leftMotor", "A"),
           rightMotor: fieldText(block, "rightMotor", "B"),
-          left: percentPower(fieldNumber(block, "power", 40) * sign),
-          right: percentPower(fieldNumber(block, "power", 40) * sign),
+          left: power,
+          right: power,
         }),
       ];
     }
 
     case "motion_tank_drive_seconds": {
       const sign = fieldText(block, "direction", "Forward") === "Backward" ? -1 : 1;
+      const power = percentPowerValue(scaleValue(valueFromInputOrField(block, "power", "power", 40), sign));
       return [
         commandNode(block, "motion.setMotorPairForTime", {
           leftMotor: fieldText(block, "leftMotor", "A"),
           rightMotor: fieldText(block, "rightMotor", "B"),
-          left: percentPower(fieldNumber(block, "power", 40) * sign),
-          right: percentPower(fieldNumber(block, "power", 40) * sign),
-          seconds: literal(fieldNumber(block, "seconds", 1)),
+          left: power,
+          right: power,
+          seconds: valueFromInputOrField(block, "seconds", "seconds", 1),
         }),
       ];
     }
@@ -1260,7 +1286,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       return [
         commandNode(block, "motion.setMotor", {
           motor: fieldText(block, "motor", "A"),
-          power: percentPower(fieldNumber(block, "power", 40)),
+          power: percentPowerValue(valueFromInputOrField(block, "power", "power", 40)),
         }),
       ];
 
@@ -1269,9 +1295,9 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
         commandNode(block, "motion.setMotorPairForTime", {
           motorA: fieldText(block, "motorA", "A"),
           motorB: fieldText(block, "motorB", "B"),
-          left: percentPower(fieldNumber(block, "powerA", 40)),
-          right: percentPower(fieldNumber(block, "powerB", 40)),
-          seconds: literal(fieldNumber(block, "seconds", 1)),
+          left: percentPowerValue(valueFromInputOrField(block, "powerA", "powerA", 40)),
+          right: percentPowerValue(valueFromInputOrField(block, "powerB", "powerB", 40)),
+          seconds: valueFromInputOrField(block, "seconds", "seconds", 1),
         }),
       ];
 
@@ -1279,8 +1305,8 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       return [
         commandNode(block, "motion.setMotorForTime", {
           motor: fieldText(block, "motor", "A"),
-          power: percentPower(fieldNumber(block, "power", 40)),
-          seconds: literal(fieldNumber(block, "seconds", 1)),
+          power: percentPowerValue(valueFromInputOrField(block, "power", "power", 40)),
+          seconds: valueFromInputOrField(block, "seconds", "seconds", 1),
         }),
       ];
 
@@ -1292,9 +1318,9 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           {
             motorA: fieldText(block, "motorA", "A"),
             motorB: fieldText(block, "motorB", "B"),
-            left: percentPower(fieldNumber(block, "powerA", 40)),
-            right: percentPower(fieldNumber(block, "powerB", 40)),
-            degrees: literal(fieldNumber(block, "degrees", 360)),
+            left: percentPowerValue(valueFromInputOrField(block, "powerA", "powerA", 40)),
+            right: percentPowerValue(valueFromInputOrField(block, "powerB", "powerB", 40)),
+            degrees: valueFromInputOrField(block, "degrees", "degrees", 360),
           },
           undefined,
           "stub",
@@ -1309,8 +1335,8 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           "motion.setMotorForEncoderDegrees",
           {
             motor: fieldText(block, "motor", "A"),
-            power: percentPower(fieldNumber(block, "power", 40)),
-            degrees: literal(fieldNumber(block, "degrees", 360)),
+            power: percentPowerValue(valueFromInputOrField(block, "power", "power", 40)),
+            degrees: valueFromInputOrField(block, "degrees", "degrees", 360),
           },
           undefined,
           "stub",
@@ -1330,8 +1356,8 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           block,
           "motion.omniMove",
           {
-            power: percentPower(fieldNumber(block, "power", 40)),
-            headingDegrees: literal(fieldNumber(block, "headingDegrees", 0)),
+            power: percentPowerValue(valueFromInputOrField(block, "power", "power", 40)),
+            headingDegrees: valueFromInputOrField(block, "headingDegrees", "headingDegrees", 0),
           },
           undefined,
           "stub",
@@ -1346,7 +1372,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           "motion.omniTurn",
           {
             direction: fieldText(block, "direction", "Turn left"),
-            power: percentPower(fieldNumber(block, "power", 40)),
+            power: percentPowerValue(valueFromInputOrField(block, "power", "power", 40)),
           },
           undefined,
           "stub",
@@ -1366,8 +1392,8 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           "motion.steeringGearAngle",
           {
             id: literal(fieldNumber(block, "id", 1)),
-            speed: percentPower(fieldNumber(block, "speed", 40)),
-            angle: literal(fieldNumber(block, "angle", 0)),
+            speed: percentPowerValue(valueFromInputOrField(block, "speed", "speed", 40)),
+            angle: valueFromInputOrField(block, "angle", "angle", 0),
           },
           undefined,
           "telemetry-only",
@@ -1382,7 +1408,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           "motion.steeringGearRotation",
           {
             id: literal(fieldNumber(block, "id", 1)),
-            speed: percentPower(fieldNumber(block, "speed", 40)),
+            speed: percentPowerValue(valueFromInputOrField(block, "speed", "speed", 40)),
           },
           undefined,
           "telemetry-only",
@@ -1416,9 +1442,9 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       return [
         commandNode(block, "hardware.initializeTankLineFollower", {
           leftMotor: fieldText(block, "leftMotor", "A"),
-          leftDirection: literal(fieldNumber(block, "leftDirection", 100)),
+          leftDirection: valueFromInputOrField(block, "leftDirection", "leftDirection", 100),
           rightMotor: fieldText(block, "rightMotor", "B"),
-          rightDirection: literal(fieldNumber(block, "rightDirection", -100)),
+          rightDirection: valueFromInputOrField(block, "rightDirection", "rightDirection", -100),
           grayscalePort: fieldText(block, "grayscalePort", "5"),
         }),
       ];
@@ -1450,15 +1476,15 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
     case "patrol_line_speed":
       return [
         commandNode(block, "lineFollower.followContinuous", {
-          speed: percentPower(fieldNumber(block, "speed", 30)),
+          speed: percentPowerValue(valueFromInputOrField(block, "speed", "speed", 30)),
         }),
       ];
 
     case "patrol_line_for_time":
       return [
         commandNode(block, "lineFollower.followForTime", {
-          speed: percentPower(fieldNumber(block, "speed", 30)),
-          seconds: literal(fieldNumber(block, "seconds", 0.5)),
+          speed: percentPowerValue(valueFromInputOrField(block, "speed", "speed", 30)),
+          seconds: valueFromInputOrField(block, "seconds", "seconds", 0.5),
         }),
       ];
 
@@ -1466,8 +1492,8 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       return [
         commandNode(block, "lineFollower.untilIntersection", {
           branch: fieldText(block, "branch", "left"),
-          speed: percentPower(fieldNumber(block, "speed", 30)),
-          rushSeconds: literal(fieldNumber(block, "rushSeconds", 0)),
+          speed: percentPowerValue(valueFromInputOrField(block, "speed", "speed", 30)),
+          rushSeconds: valueFromInputOrField(block, "rushSeconds", "rushSeconds", 0),
         }),
       ];
 
@@ -1475,17 +1501,17 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       return [
         commandNode(block, "lineFollower.turnUntilBranch", {
           branch: fieldText(block, "branch", "middle"),
-          left: percentPower(fieldNumber(block, "leftSpeed", 0)),
-          right: percentPower(fieldNumber(block, "rightSpeed", 0)),
+          left: percentPowerValue(valueFromInputOrField(block, "leftSpeed", "leftSpeed", 0)),
+          right: percentPowerValue(valueFromInputOrField(block, "rightSpeed", "rightSpeed", 0)),
         }),
       ];
 
     case "patrol_start_motor_time":
       return [
         commandNode(block, "motion.setMotorPairForTime", {
-          left: percentPower(fieldNumber(block, "leftSpeed", 20)),
-          right: percentPower(fieldNumber(block, "rightSpeed", 20)),
-          seconds: literal(fieldNumber(block, "seconds", 0.5)),
+          left: percentPowerValue(valueFromInputOrField(block, "leftSpeed", "leftSpeed", 20)),
+          right: percentPowerValue(valueFromInputOrField(block, "rightSpeed", "rightSpeed", 20)),
+          seconds: valueFromInputOrField(block, "seconds", "seconds", 0.5),
         }),
       ];
 
@@ -1495,9 +1521,9 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           block,
           "motion.setMotorPairForEncoderDegrees",
           {
-            left: percentPower(fieldNumber(block, "leftSpeed", 20)),
-            right: percentPower(fieldNumber(block, "rightSpeed", 20)),
-            degrees: literal(fieldNumber(block, "degrees", 360)),
+            left: percentPowerValue(valueFromInputOrField(block, "leftSpeed", "leftSpeed", 20)),
+            right: percentPowerValue(valueFromInputOrField(block, "rightSpeed", "rightSpeed", 20)),
+            degrees: valueFromInputOrField(block, "degrees", "degrees", 360),
           },
           undefined,
           "stub",
@@ -1508,8 +1534,8 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
     case "patrol_start_motor_until_sensor":
       return [
         commandNode(block, "motion.setMotorPairUntil", {
-          left: percentPower(fieldNumber(block, "leftSpeed", 20)),
-          right: percentPower(fieldNumber(block, "rightSpeed", 20)),
+          left: percentPowerValue(valueFromInputOrField(block, "leftSpeed", "leftSpeed", 20)),
+          right: percentPowerValue(valueFromInputOrField(block, "rightSpeed", "rightSpeed", 20)),
           condition: {
             kind: "compare",
             op: compareOpFromSymbol(fieldText(block, "compare", "<")),
@@ -1519,7 +1545,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
               port: "5",
               channel: fieldNumber(block, "sensor", 1),
             },
-            right: literal(fieldNumber(block, "threshold", 50)),
+            right: valueFromInputOrField(block, "threshold", "threshold", 50),
           },
         }),
       ];
@@ -1549,7 +1575,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
         commandNode(
           block,
           "compat.reading1",
-          { value: literal(fieldNumber(block, "value", 1)) },
+          { value: valueFromInputOrField(block, "value", "value", 1) },
           undefined,
           "stub",
           "runtime.diagnostic.intentionalNoop",
@@ -1563,7 +1589,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           "legacy.patrolLine",
           {
             direction: fieldText(block, "DIRECTION", "forward"),
-            speed: literal(fieldNumber(block, "SPEED", 0.3)),
+            speed: valueFromInputOrField(block, "SPEED", "SPEED", 0.3),
           },
           undefined,
           "stub",
@@ -1601,7 +1627,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
         commandNode(
           block,
           "control.repeatTimes",
-          { times: literal(fieldNumber(block, "times", 10)) },
+          { times: valueFromInputOrField(block, "times", "times", 10) },
           { do: blockSequenceToV2Nodes(block.getInputTargetBlock("do")) },
         ),
       ];
@@ -1632,7 +1658,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       return [commandNode(block, "control.break")];
 
     case "loop_wait_seconds":
-      return [commandNode(block, "control.waitSeconds", { seconds: literal(fieldNumber(block, "seconds", 2)) })];
+      return [commandNode(block, "control.waitSeconds", { seconds: valueFromInputOrField(block, "seconds", "seconds", 2) })];
 
     case "loop_wait_until":
       return [
@@ -1675,7 +1701,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
               kind: "compare",
               op: compareOpFromField(block),
               left: { kind: "sensor", sensor: "integrated-grayscale", port: "builtin", channel: road },
-              right: literal(fieldNumber(block, "THRESHOLD", 50)),
+              right: valueFromInputOrField(block, "THRESHOLD", "THRESHOLD", 50),
             },
           },
           { then: blockSequenceToV2Nodes(block.getInputTargetBlock("DO")) },
@@ -1711,7 +1737,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
         commandNode(
           block,
           "control.repeatTimes",
-          { times: literal(fieldNumber(block, "TIMES", 3)) },
+          { times: valueFromInputOrField(block, "TIMES", "TIMES", 3) },
           { do: blockSequenceToV2Nodes(block.getInputTargetBlock("DO")) },
         ),
       ];
@@ -1747,7 +1773,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       ];
 
     case "wait_block":
-      return [commandNode(block, "control.waitSeconds", { seconds: literal(fieldNumber(block, "TIME", 1)) })];
+      return [commandNode(block, "control.waitSeconds", { seconds: valueFromInputOrField(block, "TIME", "TIME", 1) })];
 
     case "wait_seconds_v2":
       return [commandNode(block, "control.waitSeconds", { seconds: valueFromInput(block, "SECONDS", 1) })];
@@ -1785,7 +1811,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       return [
         commandNode(block, "variable.set", {
           name: `v${fieldNumber(block, "VAR", 0)}`,
-          value: literal(fieldNumber(block, "VALUE", 0)),
+          value: valueFromInputOrField(block, "VALUE", "VALUE", 0),
         }),
       ];
 
@@ -1941,7 +1967,7 @@ function blockToIR(block: Blockly.Block): IRCommand[] {
 
     case "patrol_line": {
       const dir = block.getFieldValue("DIRECTION");
-      const speed = parseFloat(block.getFieldValue("SPEED") || "0.3");
+      const speed = staticNumberFromInputOrField(block, "SPEED", "SPEED", 0.3);
       const sign = dir === "backward" ? -1 : 1;
       const s = speed * sign;
       const loopLabel = nextLabel();
@@ -1977,9 +2003,9 @@ function blockToIR(block: Blockly.Block): IRCommand[] {
 
     case "start_motor": {
       const dir = block.getFieldValue("DIR");
-      const left = parseFloat(block.getFieldValue("LEFT") || "0.3");
-      const right = parseFloat(block.getFieldValue("RIGHT") || "0.3");
-      const time = parseFloat(block.getFieldValue("TIME") || "1");
+      const left = staticNumberFromInputOrField(block, "LEFT", "LEFT", 0.3);
+      const right = staticNumberFromInputOrField(block, "RIGHT", "RIGHT", 0.3);
+      const time = staticNumberFromInputOrField(block, "TIME", "TIME", 1);
       const sign = dir === "backward" ? -1 : 1;
       const ticks = Math.round(time * 60);
       result.push({ op: OpCode.SET_MOTOR, args: [left * sign, right * sign] });
@@ -2007,7 +2033,7 @@ function blockToIR(block: Blockly.Block): IRCommand[] {
     case "if_sensor": {
       const road = parseInt(block.getFieldValue("ROAD") || "3");
       const op = block.getFieldValue("OP") as keyof typeof CompareOp;
-      const threshold = parseFloat(block.getFieldValue("THRESHOLD") || "50");
+      const threshold = staticNumberFromInputOrField(block, "THRESHOLD", "THRESHOLD", 50);
       const compareOp = CompareOp[op] ?? CompareOp.GT;
       const doBlock = block.getInputTargetBlock("DO");
 
@@ -2025,7 +2051,7 @@ function blockToIR(block: Blockly.Block): IRCommand[] {
     }
 
     case "repeat_loop": {
-      const times = parseInt(block.getFieldValue("TIMES") || "3");
+      const times = Math.trunc(staticNumberFromInputOrField(block, "TIMES", "TIMES", 3));
       const doBlock = block.getInputTargetBlock("DO");
 
       result.push({ op: OpCode.LOOP_START, args: [times] });
@@ -2037,7 +2063,7 @@ function blockToIR(block: Blockly.Block): IRCommand[] {
     }
 
     case "wait_block": {
-      const time = parseFloat(block.getFieldValue("TIME") || "1");
+      const time = staticNumberFromInputOrField(block, "TIME", "TIME", 1);
       const ticks = Math.round(time * 60);
       result.push({ op: OpCode.WAIT_TICKS, args: [ticks] });
       break;
@@ -2045,7 +2071,7 @@ function blockToIR(block: Blockly.Block): IRCommand[] {
 
     case "set_var": {
       const varIdx = parseInt(block.getFieldValue("VAR") || "0");
-      const value = parseFloat(block.getFieldValue("VALUE") || "0");
+      const value = staticNumberFromInputOrField(block, "VALUE", "VALUE", 0);
       result.push({ op: OpCode.SET_VAR, args: [varIdx, value] });
       break;
     }

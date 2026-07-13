@@ -82,21 +82,21 @@ const EXPECTED_MOTION_TOOLBOX_TYPES = [
 ] as const;
 
 const EXPECTED_MOTION_BLOCK_TEXT: Record<typeof EXPECTED_MOTION_TOOLBOX_TYPES[number], string> = {
-  motion_tank_drive_continuous: "move left motor A right motor B Forward power 40 %",
-  motion_tank_drive_seconds: "move left motor A right motor B Forward power 40 % run for 1 secs.",
+  motion_tank_drive_continuous: "move left motor A right motor B Forward power %",
+  motion_tank_drive_seconds: "move left motor A right motor B Forward power % run for secs.",
   motion_stop_pair: "stop left motor A right motor B",
-  motion_single_motor_power: "set motor A power 40 %",
-  motion_dual_motor_seconds: "set motor A power 40 % motor B power 40 % run for 1 secs.",
-  motion_single_motor_seconds: "set motor A power 40 % run for 1 secs.",
-  motion_dual_motor_degrees: "set motor A power 40 % motor B power 40 % rotate for 360 degrees",
-  motion_single_motor_degrees: "set motor A power 40 % rotate for 360 degrees",
+  motion_single_motor_power: "set motor A power %",
+  motion_dual_motor_seconds: "set motor A power % motor B power % run for secs.",
+  motion_single_motor_seconds: "set motor A power % run for secs.",
+  motion_dual_motor_degrees: "set motor A power % motor B power % rotate for degrees",
+  motion_single_motor_degrees: "set motor A power % rotate for degrees",
   motion_reverse_motor: "reverse motor A",
   motion_stop_motor: "stop motor all",
-  motion_omni_move: "omni-wheel move power 40 % towards 0 degree",
-  motion_omni_turn: "omni-wheel turn Turn left power 40 %",
+  motion_omni_move: "omni-wheel move power % towards degree",
+  motion_omni_turn: "omni-wheel turn Turn left power %",
   motion_omni_stop: "stop omni-wheel move",
-  motion_steering_angle_mode: "set up steering gear angle mode ID 1 speed 40 angle 0",
-  motion_steering_rotation_mode: "set up steering gear rotation mode ID 1 speed 40",
+  motion_steering_angle_mode: "set up steering gear angle mode ID 1 speed angle",
+  motion_steering_rotation_mode: "set up steering gear rotation mode ID 1 speed",
   motion_restore_steering_torque: "restore steering torque",
 };
 
@@ -161,12 +161,12 @@ const EXPECTED_LOOP_TOOLBOX_TYPES = [
 
 const EXPECTED_LOOP_BLOCK_TEXT: Record<typeof EXPECTED_LOOP_TOOLBOX_TYPES[number], string> = {
   loop_repeat_forever: "repeat forever",
-  loop_repeat_times: "repeat 10 times",
+  loop_repeat_times: "repeat times",
   loop_while_condition: "if repeat",
   loop_repeat_until: "repeat until",
   loop_break: "break",
   loop_return_value: "Return",
-  loop_wait_seconds: "wait 2 secs.",
+  loop_wait_seconds: "wait secs.",
   loop_wait_until: "wait until",
 };
 
@@ -235,6 +235,14 @@ function dropdownValues(field: Blockly.Field | null): string[] {
     throw new Error("Expected a dropdown field");
   }
   return (field as any).getOptions(false).map((option: readonly string[]) => option[1]);
+}
+
+function shadowNumber(toolboxBlock: ToolboxItem, inputName: string): number {
+  const input = toolboxBlock.inputs?.[inputName] as { shadow?: { type?: string; fields?: { NUM?: number } } } | undefined;
+  if (input?.shadow?.type !== "value_number") {
+    throw new Error(`Expected ${toolboxBlock.type}.${inputName} to use a value_number shadow`);
+  }
+  return Number(input.shadow.fields?.NUM);
 }
 
 function makeSvgFieldRoot(): { root: SVGGElement; rect: SVGRectElement } {
@@ -314,7 +322,7 @@ function makeMixedCategoryWorkspace(): Blockly.Workspace {
   connectNext(setSpeed, drive);
 
   const repeat = workspace.newBlock("loop_repeat_times");
-  repeat.setFieldValue("2", "times");
+  connectValue(repeat, "times", valueNumber(workspace, 2));
   const ifThen = workspace.newBlock("logic_if_then");
   const logicAnd = workspace.newBlock("logic_and");
   const grayscaleBlack = workspace.newBlock("sensor_integrated_grayscale_detect_black");
@@ -328,7 +336,7 @@ function makeMixedCategoryWorkspace(): Blockly.Workspace {
   connectValue(logicAnd, "cond2", aiRecognition);
   connectValue(ifThen, "condition", logicAnd);
   const wait = workspace.newBlock("loop_wait_seconds");
-  wait.setFieldValue("0", "seconds");
+  connectValue(wait, "seconds", valueNumber(workspace, 0));
   connectStatement(ifThen, "then", wait);
   connectStatement(repeat, "do", ifThen);
   connectNext(drive, repeat);
@@ -339,12 +347,12 @@ function makeMixedCategoryWorkspace(): Blockly.Workspace {
   connectNext(repeat, led);
 
   const readingStub = workspace.newBlock("light_reading_1");
-  readingStub.setFieldValue("1", "value");
+  connectValue(readingStub, "value", valueNumber(workspace, 1));
   connectNext(led, readingStub);
 
   const patrol = workspace.newBlock("patrol_line_for_time");
-  patrol.setFieldValue("30", "speed");
-  patrol.setFieldValue("0.05", "seconds");
+  connectValue(patrol, "speed", valueNumber(workspace, 30));
+  connectValue(patrol, "seconds", valueNumber(workspace, 0.05));
   connectNext(readingStub, patrol);
 
   const omniStub = workspace.newBlock("motion_omni_stop");
@@ -393,15 +401,15 @@ describe("projectStore C-013 save/load compatibility", () => {
     }
   });
 
-  it("renders Math random range as a compact field block", () => {
+  it("renders Math random range with connectable number inputs", () => {
     const workspace = new Blockly.Workspace();
     const block = workspace.newBlock("math_random_range");
 
     expect(block.outputConnection).not.toBeNull();
-    expect(block.getField("min")).not.toBeNull();
-    expect(block.getField("max")).not.toBeNull();
-    expect(block.getInput("MIN")).toBeNull();
-    expect(block.getInput("MAX")).toBeNull();
+    expect(block.getField("min")).toBeNull();
+    expect(block.getField("max")).toBeNull();
+    expect(block.getInput("min")?.connection?.getCheck()).toEqual(["Number"]);
+    expect(block.getInput("max")?.connection?.getCheck()).toEqual(["Number"]);
   });
 
   it("matches the line-following toolbox category set", () => {
@@ -437,6 +445,17 @@ describe("projectStore C-013 save/load compatibility", () => {
     expect(motionTypes).toEqual([...EXPECTED_MOTION_TOOLBOX_TYPES]);
     expect(motionTypes).toEqual(registryMotionTypes);
 
+    const toolboxBlocksByType = new Map(
+      (motionCategory.contents ?? [])
+        .filter((item) => item.kind === "block" && item.type)
+        .map((item) => [item.type, item]),
+    );
+    expect(shadowNumber(toolboxBlocksByType.get("motion_tank_drive_continuous")!, "power")).toBe(40);
+    expect(shadowNumber(toolboxBlocksByType.get("motion_tank_drive_seconds")!, "seconds")).toBe(1);
+    expect(shadowNumber(toolboxBlocksByType.get("motion_dual_motor_degrees")!, "degrees")).toBe(360);
+    expect(shadowNumber(toolboxBlocksByType.get("motion_omni_move")!, "headingDegrees")).toBe(0);
+    expect(shadowNumber(toolboxBlocksByType.get("motion_steering_angle_mode")!, "angle")).toBe(0);
+
     for (const type of EXPECTED_MOTION_TOOLBOX_TYPES) {
       const block = workspace.newBlock(type);
       expect(visibleBlockText(block), type).toBe(EXPECTED_MOTION_BLOCK_TEXT[type]);
@@ -459,7 +478,7 @@ describe("projectStore C-013 save/load compatibility", () => {
     expect(dropdownValues(steeringRotation.getField("id"))).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
   });
 
-  it("uses WhalesBot field widget types for Motion, Sensor, Event, and Loop", () => {
+  it("uses connectable number inputs and dropdown fields for Motion, Sensor, Event, and Loop", () => {
     const workspace = new Blockly.Workspace();
     const auditedCategories = new Set(["Motion", "Sensor", "Event", "Loop"]);
 
@@ -469,11 +488,12 @@ describe("projectStore C-013 save/load compatibility", () => {
       for (const schema of entry.fields) {
         if (schema.kind !== "number" && schema.kind !== "dropdown") continue;
 
-        const field = block.getField(schema.name);
-        expect(field, `${entry.type}.${schema.name}`).not.toBeNull();
         if (schema.kind === "number") {
-          expect(field, `${entry.type}.${schema.name}`).toBeInstanceOf(Blockly.FieldNumber);
+          expect(block.getField(schema.name), `${entry.type}.${schema.name}`).toBeNull();
+          expect(block.getInput(schema.name)?.connection?.getCheck(), `${entry.type}.${schema.name}`).toEqual(["Number"]);
         } else {
+          const field = block.getField(schema.name);
+          expect(field, `${entry.type}.${schema.name}`).not.toBeNull();
           expect(field, `${entry.type}.${schema.name}`).toBeInstanceOf(Blockly.FieldDropdown);
         }
       }
@@ -567,6 +587,14 @@ describe("projectStore C-013 save/load compatibility", () => {
     expect(loopTypes).toEqual([...EXPECTED_LOOP_TOOLBOX_TYPES]);
     expect(loopTypes).toEqual(registryLoopTypes);
 
+    const toolboxBlocksByType = new Map(
+      (loopCategory.contents ?? [])
+        .filter((item) => item.kind === "block" && item.type)
+        .map((item) => [item.type, item]),
+    );
+    expect(shadowNumber(toolboxBlocksByType.get("loop_repeat_times")!, "times")).toBe(10);
+    expect(shadowNumber(toolboxBlocksByType.get("loop_wait_seconds")!, "seconds")).toBe(2);
+
     for (const type of EXPECTED_LOOP_TOOLBOX_TYPES) {
       const block = workspace.newBlock(type);
       expect(visibleBlockText(block), type).toBe(EXPECTED_LOOP_BLOCK_TEXT[type]);
@@ -584,7 +612,7 @@ describe("projectStore C-013 save/load compatibility", () => {
     }
 
     const repeatTimes = workspace.newBlock("loop_repeat_times");
-    expect(repeatTimes.getFieldValue("times")).toBe(10);
+    expect(repeatTimes.getInput("times")?.connection?.getCheck()).toEqual(["Number"]);
 
     const whileLoop = workspace.newBlock("loop_while_condition");
     expect(whileLoop.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);
@@ -594,7 +622,7 @@ describe("projectStore C-013 save/load compatibility", () => {
     expect(returnBlock.outputConnection).toBeNull();
 
     const waitSeconds = workspace.newBlock("loop_wait_seconds");
-    expect(waitSeconds.getFieldValue("seconds")).toBe(2);
+    expect(waitSeconds.getInput("seconds")?.connection?.getCheck()).toEqual(["Number"]);
 
     const waitUntil = workspace.newBlock("loop_wait_until");
     expect(waitUntil.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);

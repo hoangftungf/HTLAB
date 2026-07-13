@@ -14,21 +14,45 @@ const lineFollowingRouteXml = `\
         <next>
           <block type="patrol_initialize_tank">
             <field name="leftMotor">A</field>
-            <field name="leftDirection">100</field>
+            <value name="leftDirection">
+              <shadow type="value_number">
+                <field name="NUM">100</field>
+              </shadow>
+            </value>
             <field name="rightMotor">B</field>
-            <field name="rightDirection">-100</field>
+            <value name="rightDirection">
+              <shadow type="value_number">
+                <field name="NUM">-100</field>
+              </shadow>
+            </value>
             <field name="grayscalePort">5</field>
             <next>
               <block type="patrol_black_white_detection">
                 <next>
                   <block type="patrol_line_for_time">
-                    <field name="speed">32</field>
-                    <field name="seconds">1.25</field>
+                    <value name="speed">
+                      <shadow type="value_number">
+                        <field name="NUM">32</field>
+                      </shadow>
+                    </value>
+                    <value name="seconds">
+                      <shadow type="value_number">
+                        <field name="NUM">1.25</field>
+                      </shadow>
+                    </value>
                     <next>
                       <block type="patrol_turn_branch">
                         <field name="branch">middle</field>
-                        <field name="leftSpeed">-20</field>
-                        <field name="rightSpeed">20</field>
+                        <value name="leftSpeed">
+                          <shadow type="value_number">
+                            <field name="NUM">-20</field>
+                          </shadow>
+                        </value>
+                        <value name="rightSpeed">
+                          <shadow type="value_number">
+                            <field name="NUM">20</field>
+                          </shadow>
+                        </value>
                       </block>
                     </next>
                   </block>
@@ -48,10 +72,18 @@ const mathLogicControlXml = `\
     <next>
       <block type="set_var">
         <field name="VAR">0</field>
-        <field name="VALUE">1</field>
+        <value name="VALUE">
+          <shadow type="value_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
         <next>
           <block type="loop_repeat_times">
-            <field name="times">3</field>
+            <value name="times">
+              <shadow type="value_number">
+                <field name="NUM">3</field>
+              </shadow>
+            </value>
             <statement name="do">
               <block type="logic_if_then">
                 <value name="condition">
@@ -110,7 +142,11 @@ const sideEffectDiagnosticsXml = `\
               <block type="motion_omni_stop">
                 <next>
                   <block type="light_reading_1">
-                    <field name="value">1</field>
+                    <value name="value">
+                      <shadow type="value_number">
+                        <field name="NUM">1</field>
+                      </shadow>
+                    </value>
                   </block>
                 </next>
               </block>
@@ -213,9 +249,17 @@ const mixedCategoryQaXml = `\
         <next>
           <block type="patrol_initialize_tank">
             <field name="leftMotor">A</field>
-            <field name="leftDirection">100</field>
+            <value name="leftDirection">
+              <shadow type="value_number">
+                <field name="NUM">100</field>
+              </shadow>
+            </value>
             <field name="rightMotor">B</field>
-            <field name="rightDirection">-100</field>
+            <value name="rightDirection">
+              <shadow type="value_number">
+                <field name="NUM">-100</field>
+              </shadow>
+            </value>
             <field name="grayscalePort">5</field>
             <next>
               <block type="patrol_black_white_detection">
@@ -245,7 +289,11 @@ const mixedCategoryQaXml = `\
                     </value>
                     <next>
                       <block type="loop_repeat_times">
-                        <field name="times">2</field>
+                        <value name="times">
+                          <shadow type="value_number">
+                            <field name="NUM">2</field>
+                          </shadow>
+                        </value>
                         <statement name="do">
                           <block type="logic_if_then">
                             <value name="condition">
@@ -275,7 +323,11 @@ const mixedCategoryQaXml = `\
                                 <field name="color">#33ffaa</field>
                                 <next>
                                   <block type="light_reading_1">
-                                    <field name="value">1</field>
+                                    <value name="value">
+                                      <shadow type="value_number">
+                                        <field name="NUM">1</field>
+                                      </shadow>
+                                    </value>
                                   </block>
                                 </next>
                               </block>
@@ -284,8 +336,16 @@ const mixedCategoryQaXml = `\
                         </statement>
                         <next>
                           <block type="patrol_line_for_time">
-                            <field name="speed">30</field>
-                            <field name="seconds">0.4</field>
+                            <value name="speed">
+                              <shadow type="value_number">
+                                <field name="NUM">30</field>
+                              </shadow>
+                            </value>
+                            <value name="seconds">
+                              <shadow type="value_number">
+                                <field name="NUM">0.4</field>
+                              </shadow>
+                            </value>
                             <next>
                               <block type="motion_omni_stop"></block>
                             </next>

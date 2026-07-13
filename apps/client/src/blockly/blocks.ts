@@ -34,6 +34,8 @@ const BLOCK_COLOURS = {
   cCode: "#ff7a2f",
 } as const;
 
+const numberInput = (name: string): Record<string, unknown> => ({ type: "input_value", name, check: "Number" });
+
 // ---- Phần cứng ----
 
 Blockly.Blocks["initialize"] = {
@@ -75,14 +77,7 @@ Blockly.Blocks["patrol_line"] = {
           name: "DIRECTION",
           options: [["forward", "forward"], ["backward", "backward"]],
         },
-        {
-          type: "field_number",
-          name: "SPEED",
-          value: 0.3,
-          min: 0.1,
-          max: 1,
-          precision: 0.1,
-        },
+        numberInput("SPEED"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -143,30 +138,9 @@ Blockly.Blocks["start_motor"] = {
           name: "DIR",
           options: [["forward", "forward"], ["backward", "backward"]],
         },
-        {
-          type: "field_number",
-          name: "LEFT",
-          value: 0.3,
-          min: -1,
-          max: 1,
-          precision: 0.1,
-        },
-        {
-          type: "field_number",
-          name: "RIGHT",
-          value: 0.3,
-          min: -1,
-          max: 1,
-          precision: 0.1,
-        },
-        {
-          type: "field_number",
-          name: "TIME",
-          value: 1,
-          min: 0.1,
-          max: 60,
-          precision: 0.1,
-        },
+        numberInput("LEFT"),
+        numberInput("RIGHT"),
+        numberInput("TIME"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -246,13 +220,7 @@ Blockly.Blocks["if_sensor"] = {
           name: "OP",
           options: [["\u003E", "GT"], ["\u003C", "LT"], ["\u2265", "GTE"], ["\u2264", "LTE"], ["=", "EQ"], ["\u2260", "NEQ"]],
         },
-        {
-          type: "field_number",
-          name: "THRESHOLD",
-          value: 50,
-          min: 0,
-          max: 100,
-        },
+        numberInput("THRESHOLD"),
       ],
       message1: "do %1",
       args1: [{ type: "input_statement", name: "DO" }],
@@ -270,13 +238,7 @@ Blockly.Blocks["repeat_loop"] = {
       type: "repeat_loop",
       message0: "Repeat %1 times",
       args0: [
-        {
-          type: "field_number",
-          name: "TIMES",
-          value: 3,
-          min: 1,
-          max: 999,
-        },
+        numberInput("TIMES"),
       ],
       message1: "do %1",
       args1: [{ type: "input_statement", name: "DO" }],
@@ -294,14 +256,7 @@ Blockly.Blocks["wait_block"] = {
       type: "wait_block",
       message0: "Wait %1 sec",
       args0: [
-        {
-          type: "field_number",
-          name: "TIME",
-          value: 1,
-          min: 0.01,
-          max: 60,
-          precision: 0.01,
-        },
+        numberInput("TIME"),
       ],
       colour: BLOCK_COLOURS.logic,
       previousStatement: null,
@@ -324,13 +279,7 @@ Blockly.Blocks["set_var"] = {
           name: "VAR",
           options: [["v0", "0"], ["v1", "1"], ["v2", "2"], ["v3", "3"], ["v4", "4"], ["v5", "5"], ["v6", "6"], ["v7", "7"]],
         },
-        {
-          type: "field_number",
-          name: "VALUE",
-          value: 0,
-          min: -999,
-          max: 999,
-        },
+        numberInput("VALUE"),
       ],
       colour: BLOCK_COLOURS.variables,
       previousStatement: null,
@@ -550,8 +499,8 @@ Blockly.Blocks["math_random_range"] = {
       type: "math_random_range",
       message0: "random %1 to %2",
       args0: [
-        { type: "field_number", name: "min", value: 0 },
-        { type: "field_number", name: "max", value: 10 },
+        numberInput("min"),
+        numberInput("max"),
       ],
       colour: BLOCK_COLOURS.values,
       output: "Number",
@@ -816,7 +765,7 @@ Blockly.Blocks["loop_repeat_times"] = {
     this.jsonInit({
       type: "loop_repeat_times",
       message0: "repeat %1 times",
-      args0: [{ type: "field_number", name: "times", value: 10, min: 0 }],
+      args0: [numberInput("times")],
       message1: "%1",
       args1: [{ type: "input_statement", name: "do" }],
       colour: BLOCK_COLOURS.loop,
@@ -891,7 +840,7 @@ Blockly.Blocks["loop_wait_seconds"] = {
     this.jsonInit({
       type: "loop_wait_seconds",
       message0: "wait %1 secs.",
-      args0: [{ type: "field_number", name: "seconds", value: 2, min: 0 }],
+      args0: [numberInput("seconds")],
       colour: BLOCK_COLOURS.loop,
       previousStatement: null,
       nextStatement: null,
@@ -1315,7 +1264,7 @@ Blockly.Blocks["motion_tank_drive_continuous"] = {
         { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "direction", options: DIRECTION_OPTIONS },
-        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+        numberInput("power"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1335,8 +1284,8 @@ Blockly.Blocks["motion_tank_drive_seconds"] = {
         { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "direction", options: DIRECTION_OPTIONS },
-        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
-        { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
+        numberInput("power"),
+        numberInput("seconds"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1372,7 +1321,7 @@ Blockly.Blocks["motion_single_motor_power"] = {
       message0: "set motor %1 power %2 %%",
       args0: [
         { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+        numberInput("power"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1389,10 +1338,10 @@ Blockly.Blocks["motion_dual_motor_seconds"] = {
       message0: "set motor %1 power %2 %% motor %3 power %4 %% run for %5 secs.",
       args0: [
         { type: "field_dropdown", name: "motorA", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "powerA", value: 40, min: -100, max: 100 },
+        numberInput("powerA"),
         { type: "field_dropdown", name: "motorB", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "powerB", value: 40, min: -100, max: 100 },
-        { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
+        numberInput("powerB"),
+        numberInput("seconds"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1410,8 +1359,8 @@ Blockly.Blocks["motion_single_motor_seconds"] = {
       message0: "set motor %1 power %2 %% run for %3 secs.",
       args0: [
         { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
-        { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
+        numberInput("power"),
+        numberInput("seconds"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1428,10 +1377,10 @@ Blockly.Blocks["motion_dual_motor_degrees"] = {
       message0: "set motor %1 power %2 %% motor %3 power %4 %% rotate for %5 degrees",
       args0: [
         { type: "field_dropdown", name: "motorA", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "powerA", value: 40, min: -100, max: 100 },
+        numberInput("powerA"),
         { type: "field_dropdown", name: "motorB", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "powerB", value: 40, min: -100, max: 100 },
-        { type: "field_number", name: "degrees", value: 360 },
+        numberInput("powerB"),
+        numberInput("degrees"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1449,8 +1398,8 @@ Blockly.Blocks["motion_single_motor_degrees"] = {
       message0: "set motor %1 power %2 %% rotate for %3 degrees",
       args0: [
         { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
-        { type: "field_number", name: "degrees", value: 360 },
+        numberInput("power"),
+        numberInput("degrees"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1494,8 +1443,8 @@ Blockly.Blocks["motion_omni_move"] = {
       type: "motion_omni_move",
       message0: "omni-wheel move power %1 %% towards %2 degree",
       args0: [
-        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
-        { type: "field_number", name: "headingDegrees", value: 0 },
+        numberInput("power"),
+        numberInput("headingDegrees"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1512,7 +1461,7 @@ Blockly.Blocks["motion_omni_turn"] = {
       message0: "omni-wheel turn %1 power %2 %%",
       args0: [
         { type: "field_dropdown", name: "direction", options: TURN_DIRECTION_OPTIONS },
-        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+        numberInput("power"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1542,8 +1491,8 @@ Blockly.Blocks["motion_steering_angle_mode"] = {
       message0: "set up steering gear angle mode ID %1 speed %2 angle %3",
       args0: [
         { type: "field_dropdown", name: "id", options: STEERING_ID_OPTIONS },
-        { type: "field_number", name: "speed", value: 40, min: 0, max: 100 },
-        { type: "field_number", name: "angle", value: 0 },
+        numberInput("speed"),
+        numberInput("angle"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1560,7 +1509,7 @@ Blockly.Blocks["motion_steering_rotation_mode"] = {
       message0: "set up steering gear rotation mode ID %1 speed %2",
       args0: [
         { type: "field_dropdown", name: "id", options: STEERING_ID_OPTIONS },
-        { type: "field_number", name: "speed", value: 40, min: -100, max: 100 },
+        numberInput("speed"),
       ],
       colour: BLOCK_COLOURS.movement,
       previousStatement: null,
@@ -1590,9 +1539,9 @@ Blockly.Blocks["patrol_initialize_tank"] = {
       message0: "Initialize tank line follower left %1 dir %2 right %3 dir %4 grayscale port %5",
       args0: [
         { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "leftDirection", value: 100 },
+        numberInput("leftDirection"),
         { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
-        { type: "field_number", name: "rightDirection", value: -100 },
+        numberInput("rightDirection"),
         { type: "field_dropdown", name: "grayscalePort", options: SENSOR_PORT_OPTIONS },
       ],
       colour: BLOCK_COLOURS.patrolLine,
@@ -1641,7 +1590,7 @@ Blockly.Blocks["patrol_line_speed"] = {
     this.jsonInit({
       type: "patrol_line_speed",
       message0: "Patrol line speed %1",
-      args0: [{ type: "field_number", name: "speed", value: 30, min: 0, max: 100 }],
+      args0: [numberInput("speed")],
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
       nextStatement: null,
@@ -1656,8 +1605,8 @@ Blockly.Blocks["patrol_line_for_time"] = {
       type: "patrol_line_for_time",
       message0: "Patrol line speed %1 for %2 sec",
       args0: [
-        { type: "field_number", name: "speed", value: 30, min: 0, max: 100 },
-        { type: "field_number", name: "seconds", value: 0.5, min: 0, precision: 0.01 },
+        numberInput("speed"),
+        numberInput("seconds"),
       ],
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
@@ -1674,8 +1623,8 @@ Blockly.Blocks["patrol_line_intersections"] = {
       message0: "Patrol until %1 speed %2 rush through %3 sec",
       args0: [
         { type: "field_dropdown", name: "branch", options: BRANCH_OPTIONS },
-        { type: "field_number", name: "speed", value: 30, min: 0, max: 100 },
-        { type: "field_number", name: "rushSeconds", value: 0, min: 0, precision: 0.01 },
+        numberInput("speed"),
+        numberInput("rushSeconds"),
       ],
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
@@ -1692,8 +1641,8 @@ Blockly.Blocks["patrol_turn_branch"] = {
       message0: "Turn to %1 left speed %2 right speed %3",
       args0: [
         { type: "field_dropdown", name: "branch", options: BRANCH_OPTIONS },
-        { type: "field_number", name: "leftSpeed", value: 0, min: -100, max: 100 },
-        { type: "field_number", name: "rightSpeed", value: 0, min: -100, max: 100 },
+        numberInput("leftSpeed"),
+        numberInput("rightSpeed"),
       ],
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
@@ -1709,9 +1658,9 @@ Blockly.Blocks["patrol_start_motor_time"] = {
       type: "patrol_start_motor_time",
       message0: "Start motor left speed %1 right speed %2 time %3 sec",
       args0: [
-        { type: "field_number", name: "leftSpeed", value: 20, min: -100, max: 100 },
-        { type: "field_number", name: "rightSpeed", value: 20, min: -100, max: 100 },
-        { type: "field_number", name: "seconds", value: 0.5, min: 0, precision: 0.01 },
+        numberInput("leftSpeed"),
+        numberInput("rightSpeed"),
+        numberInput("seconds"),
       ],
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
@@ -1727,9 +1676,9 @@ Blockly.Blocks["patrol_start_motor_angle"] = {
       type: "patrol_start_motor_angle",
       message0: "Start motor left speed %1 right speed %2 angle %3",
       args0: [
-        { type: "field_number", name: "leftSpeed", value: 20, min: -100, max: 100 },
-        { type: "field_number", name: "rightSpeed", value: 20, min: -100, max: 100 },
-        { type: "field_number", name: "degrees", value: 360 },
+        numberInput("leftSpeed"),
+        numberInput("rightSpeed"),
+        numberInput("degrees"),
       ],
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
@@ -1745,11 +1694,11 @@ Blockly.Blocks["patrol_start_motor_until_sensor"] = {
       type: "patrol_start_motor_until_sensor",
       message0: "Start motor left speed %1 right speed %2 until sensor %3 %4 %5",
       args0: [
-        { type: "field_number", name: "leftSpeed", value: 20, min: -100, max: 100 },
-        { type: "field_number", name: "rightSpeed", value: 20, min: -100, max: 100 },
+        numberInput("leftSpeed"),
+        numberInput("rightSpeed"),
         { type: "field_dropdown", name: "sensor", options: SENSOR_PORT_OPTIONS },
         { type: "field_dropdown", name: "compare", options: COMPARE_OPTIONS },
-        { type: "field_number", name: "threshold", value: 50 },
+        numberInput("threshold"),
       ],
       colour: BLOCK_COLOURS.patrolLine,
       previousStatement: null,
@@ -1818,13 +1767,7 @@ const CATEGORY_COLOURS: Record<BlockCategory, string> = {
 function fallbackFieldArg(field: BlockFieldSchema): Record<string, unknown> {
   switch (field.kind) {
     case "number":
-      return {
-        type: "field_number",
-        name: field.name,
-        value: Number(field.defaultValue ?? 0),
-        ...(field.min !== undefined ? { min: field.min } : {}),
-        ...(field.max !== undefined ? { max: field.max } : {}),
-      };
+      return numberInput(field.name);
     case "text":
       return { type: "field_input", name: field.name, text: String(field.defaultValue ?? "") };
     case "dropdown":

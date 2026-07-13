@@ -16,6 +16,10 @@ const numberShadow = (value: number) => ({
   shadow: { type: "value_number", fields: { NUM: value } },
 });
 
+const numberInputs = (values: Record<string, number>) => ({
+  inputs: Object.fromEntries(Object.entries(values).map(([name, value]) => [name, numberShadow(value)])),
+});
+
 const booleanShadow = (value: boolean) => ({
   shadow: { type: "logic_literal_v2", fields: { BOOL: value ? "TRUE" : "FALSE" } },
 });
@@ -33,21 +37,21 @@ export const toolbox: any = {
       name: "Motion",
       colour: "#ff4f7b",
       contents: [
-        block("motion_tank_drive_continuous"),
-        block("motion_tank_drive_seconds"),
+        block("motion_tank_drive_continuous", numberInputs({ power: 40 })),
+        block("motion_tank_drive_seconds", numberInputs({ power: 40, seconds: 1 })),
         block("motion_stop_pair"),
-        block("motion_single_motor_power"),
-        block("motion_dual_motor_seconds"),
-        block("motion_single_motor_seconds"),
-        block("motion_dual_motor_degrees"),
-        block("motion_single_motor_degrees"),
+        block("motion_single_motor_power", numberInputs({ power: 40 })),
+        block("motion_dual_motor_seconds", numberInputs({ powerA: 40, powerB: 40, seconds: 1 })),
+        block("motion_single_motor_seconds", numberInputs({ power: 40, seconds: 1 })),
+        block("motion_dual_motor_degrees", numberInputs({ powerA: 40, powerB: 40, degrees: 360 })),
+        block("motion_single_motor_degrees", numberInputs({ power: 40, degrees: 360 })),
         block("motion_reverse_motor"),
         block("motion_stop_motor"),
-        block("motion_omni_move"),
-        block("motion_omni_turn"),
+        block("motion_omni_move", numberInputs({ power: 40, headingDegrees: 0 })),
+        block("motion_omni_turn", numberInputs({ power: 40 })),
         block("motion_omni_stop"),
-        block("motion_steering_angle_mode"),
-        block("motion_steering_rotation_mode"),
+        block("motion_steering_angle_mode", numberInputs({ speed: 40, angle: 0 })),
+        block("motion_steering_rotation_mode", numberInputs({ speed: 40 })),
         block("motion_restore_steering_torque"),
       ],
     },
@@ -94,7 +98,7 @@ export const toolbox: any = {
       colour: "#ffad33",
       contents: [
         block("loop_repeat_forever"),
-        block("loop_repeat_times"),
+        block("loop_repeat_times", numberInputs({ times: 10 })),
         block("loop_while_condition", {
           inputs: { condition: booleanShadow(true) },
         }),
@@ -105,7 +109,7 @@ export const toolbox: any = {
         block("loop_return_value", {
           inputs: { value: numberShadow(0) },
         }),
-        block("loop_wait_seconds"),
+        block("loop_wait_seconds", numberInputs({ seconds: 2 })),
         block("loop_wait_until", {
           inputs: { condition: booleanShadow(false) },
         }),
@@ -145,7 +149,7 @@ export const toolbox: any = {
         block("math_divide", {
           inputs: { left: numberShadow(10), right: numberShadow(2) },
         }),
-        block("math_random_range"),
+        block("math_random_range", numberInputs({ min: 0, max: 10 })),
         block("math_modulo", {
           inputs: { a: numberShadow(5), b: numberShadow(2) },
         }),
@@ -173,7 +177,7 @@ export const toolbox: any = {
       contents: [
         { kind: "button", text: "Create variable", callbackKey: "CREATE_VARIABLE" },
         block("variable_create"),
-        block("set_var"),
+        block("set_var", numberInputs({ VALUE: 0 })),
         block("set_var_v2", {
           inputs: { VALUE: numberShadow(0) },
         }),
@@ -199,16 +203,16 @@ export const toolbox: any = {
       name: "Patrol line",
       colour: "#ff7a2f",
       contents: [
-        block("patrol_initialize_tank"),
+        block("patrol_initialize_tank", numberInputs({ leftDirection: 100, rightDirection: -100 })),
         block("patrol_initialize_omni"),
         block("patrol_black_white_detection"),
-        block("patrol_line_speed"),
-        block("patrol_line_for_time"),
-        block("patrol_line_intersections"),
-        block("patrol_turn_branch"),
-        block("patrol_start_motor_time"),
-        block("patrol_start_motor_angle"),
-        block("patrol_start_motor_until_sensor"),
+        block("patrol_line_speed", numberInputs({ speed: 30 })),
+        block("patrol_line_for_time", numberInputs({ speed: 30, seconds: 0.5 })),
+        block("patrol_line_intersections", numberInputs({ speed: 30, rushSeconds: 0 })),
+        block("patrol_turn_branch", numberInputs({ leftSpeed: 0, rightSpeed: 0 })),
+        block("patrol_start_motor_time", numberInputs({ leftSpeed: 20, rightSpeed: 20, seconds: 0.5 })),
+        block("patrol_start_motor_angle", numberInputs({ leftSpeed: 20, rightSpeed: 20, degrees: 360 })),
+        block("patrol_start_motor_until_sensor", numberInputs({ leftSpeed: 20, rightSpeed: 20, threshold: 50 })),
         block("patrol_start_button"),
       ],
     },
