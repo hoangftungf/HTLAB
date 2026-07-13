@@ -116,46 +116,15 @@ export const toolbox: any = {
       name: "Logic",
       colour: "#24bdf2",
       contents: [
-        block("logic_if_then", {
-          inputs: { condition: booleanShadow(true) },
-        }),
-        block("logic_if_then_else", {
-          inputs: { condition: booleanShadow(true) },
-        }),
-        block("logic_compare_lt", {
-          inputs: { a: numberShadow(0), b: numberShadow(1) },
-        }),
-        block("logic_compare_gt", {
-          inputs: { a: numberShadow(1), b: numberShadow(0) },
-        }),
-        block("logic_compare_eq", {
-          inputs: { a: numberShadow(0), b: numberShadow(0) },
-        }),
-        block("logic_compare_neq", {
-          inputs: { a: numberShadow(0), b: numberShadow(1) },
-        }),
-        block("logic_and", {
-          inputs: { cond1: booleanShadow(true), cond2: booleanShadow(false) },
-        }),
-        block("logic_or", {
-          inputs: { cond1: booleanShadow(true), cond2: booleanShadow(false) },
-        }),
-        block("logic_not", {
-          inputs: { condition: booleanShadow(true) },
-        }),
-        block("logic_literal_v2"),
-        block("logic_compare_v2", {
-          inputs: { A: numberShadow(0), B: numberShadow(0) },
-        }),
-        block("logic_operation_v2", {
-          inputs: { A: booleanShadow(true), B: booleanShadow(false) },
-        }),
-        block("logic_not_v2", {
-          inputs: { BOOL: booleanShadow(true) },
-        }),
-        block("if_sensor"),
-        block("repeat_loop"),
-        block("wait_block"),
+        block("logic_if_then"),
+        block("logic_if_then_else"),
+        block("logic_compare_lt"),
+        block("logic_compare_gt"),
+        block("logic_compare_eq"),
+        block("logic_compare_neq"),
+        block("logic_and"),
+        block("logic_or"),
+        block("logic_not"),
       ],
     },
     {

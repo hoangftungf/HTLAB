@@ -170,6 +170,30 @@ const EXPECTED_LOOP_BLOCK_TEXT: Record<typeof EXPECTED_LOOP_TOOLBOX_TYPES[number
   loop_wait_until: "wait until",
 };
 
+const EXPECTED_LOGIC_TOOLBOX_TYPES = [
+  "logic_if_then",
+  "logic_if_then_else",
+  "logic_compare_lt",
+  "logic_compare_gt",
+  "logic_compare_eq",
+  "logic_compare_neq",
+  "logic_and",
+  "logic_or",
+  "logic_not",
+] as const;
+
+const EXPECTED_LOGIC_BLOCK_TEXT: Record<typeof EXPECTED_LOGIC_TOOLBOX_TYPES[number], string> = {
+  logic_if_then: "if then",
+  logic_if_then_else: "if then else",
+  logic_compare_lt: "<",
+  logic_compare_gt: ">",
+  logic_compare_eq: "=",
+  logic_compare_neq: "not equal",
+  logic_and: "and",
+  logic_or: "or",
+  logic_not: "not",
+};
+
 function collectToolboxBlocks(items: readonly ToolboxItem[], blocks: ToolboxItem[] = []): ToolboxItem[] {
   for (const item of items) {
     if (item.kind === "block") blocks.push(item);
@@ -574,6 +598,67 @@ describe("projectStore C-013 save/load compatibility", () => {
 
     const waitUntil = workspace.newBlock("loop_wait_until");
     expect(waitUntil.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);
+  });
+
+  it("matches WhalesBot Logic toolbox order and visible block text", () => {
+    const workspace = new Blockly.Workspace();
+    const logicCategory = findToolboxCategory((toolbox as { contents: ToolboxItem[] }).contents, "Logic");
+    const logicTypes = (logicCategory.contents ?? [])
+      .filter((item) => item.kind === "block")
+      .map((item) => item.type);
+    const registryLogicTypes = WHALESBOT_BLOCK_REGISTRY
+      .filter((entry) => entry.category === "Logic")
+      .map((entry) => entry.type);
+
+    expect(logicTypes).toEqual([...EXPECTED_LOGIC_TOOLBOX_TYPES]);
+    expect(logicTypes).toEqual(registryLogicTypes);
+
+    for (const toolboxBlock of logicCategory.contents ?? []) {
+      if (toolboxBlock.kind !== "block") continue;
+      expect(toolboxBlock.inputs, toolboxBlock.type).toBeUndefined();
+    }
+
+    for (const type of EXPECTED_LOGIC_TOOLBOX_TYPES) {
+      const block = workspace.newBlock(type);
+      expect(visibleBlockText(block), type).toBe(EXPECTED_LOGIC_BLOCK_TEXT[type]);
+    }
+  });
+
+  it("matches WhalesBot Logic statement and boolean input shapes", () => {
+    const workspace = new Blockly.Workspace();
+
+    const ifThen = workspace.newBlock("logic_if_then");
+    expect(ifThen.previousConnection).not.toBeNull();
+    expect(ifThen.nextConnection).not.toBeNull();
+    expect(ifThen.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);
+    expect(ifThen.getInput("then")?.connection).not.toBeNull();
+
+    const ifThenElse = workspace.newBlock("logic_if_then_else");
+    expect(ifThenElse.previousConnection).not.toBeNull();
+    expect(ifThenElse.nextConnection).not.toBeNull();
+    expect(ifThenElse.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);
+    expect(ifThenElse.getInput("then")?.connection).not.toBeNull();
+    expect(ifThenElse.getInput("else")?.connection).not.toBeNull();
+
+    for (const type of ["logic_compare_lt", "logic_compare_gt", "logic_compare_eq", "logic_compare_neq"]) {
+      const block = workspace.newBlock(type);
+      expect(block.outputConnection?.getCheck(), type).toEqual(["Boolean"]);
+      expect(block.previousConnection, type).toBeNull();
+      expect(block.nextConnection, type).toBeNull();
+      expect(block.getInput("a")?.connection?.getCheck(), type).toEqual(["Number"]);
+      expect(block.getInput("b")?.connection?.getCheck(), type).toEqual(["Number"]);
+    }
+
+    for (const type of ["logic_and", "logic_or"]) {
+      const block = workspace.newBlock(type);
+      expect(block.outputConnection?.getCheck(), type).toEqual(["Boolean"]);
+      expect(block.getInput("cond1")?.connection?.getCheck(), type).toEqual(["Boolean"]);
+      expect(block.getInput("cond2")?.connection?.getCheck(), type).toEqual(["Boolean"]);
+    }
+
+    const notBlock = workspace.newBlock("logic_not");
+    expect(notBlock.outputConnection?.getCheck()).toEqual(["Boolean"]);
+    expect(notBlock.getInput("condition")?.connection?.getCheck()).toEqual(["Boolean"]);
   });
 
   it("keeps toolbox input and field names aligned with block definitions", () => {

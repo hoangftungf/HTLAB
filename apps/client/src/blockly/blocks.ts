@@ -664,6 +664,100 @@ Blockly.Blocks["logic_not_v2"] = {
   },
 };
 
+Blockly.Blocks["logic_if_then"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "logic_if_then",
+      message0: "if %1 then",
+      args0: [{ type: "input_value", name: "condition", check: "Boolean" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "then" }],
+      colour: BLOCK_COLOURS.logic,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Run blocks when a boolean expression is true",
+    });
+  },
+};
+
+Blockly.Blocks["logic_if_then_else"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "logic_if_then_else",
+      message0: "if %1 then",
+      args0: [{ type: "input_value", name: "condition", check: "Boolean" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "then" }],
+      message2: "else %1",
+      args2: [{ type: "input_statement", name: "else" }],
+      colour: BLOCK_COLOURS.logic,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Run one branch when a boolean expression is true and another branch otherwise",
+    });
+  },
+};
+
+function logicCompareBlock(type: string, operatorText: string, tooltip: string): void {
+  Blockly.Blocks[type] = {
+    init(this: Blockly.Block) {
+      this.jsonInit({
+        type,
+        message0: `%1 ${operatorText} %2`,
+        args0: [
+          { type: "input_value", name: "a", check: "Number" },
+          { type: "input_value", name: "b", check: "Number" },
+        ],
+        inputsInline: true,
+        colour: BLOCK_COLOURS.logic,
+        output: "Boolean",
+        tooltip,
+      });
+    },
+  };
+}
+
+logicCompareBlock("logic_compare_lt", "<", "Check whether the left numeric value is less than the right value");
+logicCompareBlock("logic_compare_gt", ">", "Check whether the left numeric value is greater than the right value");
+logicCompareBlock("logic_compare_eq", "=", "Check whether two numeric values are equal");
+logicCompareBlock("logic_compare_neq", "not equal", "Check whether two numeric values are not equal");
+
+function logicBooleanBlock(type: string, operatorText: string, tooltip: string): void {
+  Blockly.Blocks[type] = {
+    init(this: Blockly.Block) {
+      this.jsonInit({
+        type,
+        message0: `%1 ${operatorText} %2`,
+        args0: [
+          { type: "input_value", name: "cond1", check: "Boolean" },
+          { type: "input_value", name: "cond2", check: "Boolean" },
+        ],
+        inputsInline: true,
+        colour: BLOCK_COLOURS.logic,
+        output: "Boolean",
+        tooltip,
+      });
+    },
+  };
+}
+
+logicBooleanBlock("logic_and", "and", "Check whether both boolean expressions are true");
+logicBooleanBlock("logic_or", "or", "Check whether either boolean expression is true");
+
+Blockly.Blocks["logic_not"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "logic_not",
+      message0: "not %1",
+      args0: [{ type: "input_value", name: "condition", check: "Boolean" }],
+      inputsInline: true,
+      colour: BLOCK_COLOURS.logic,
+      output: "Boolean",
+      tooltip: "Invert a boolean expression",
+    });
+  },
+};
+
 Blockly.Blocks["logic_sensor_group"] = {
   init(this: Blockly.Block) {
     this.jsonInit({
