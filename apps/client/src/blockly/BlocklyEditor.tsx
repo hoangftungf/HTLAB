@@ -90,6 +90,7 @@ export default function BlocklyEditor({ onIRGenerated, initialXml }: BlocklyEdit
       move: { scrollbars: true, drag: true, wheel: true },
       renderer: "zelos",
       theme: whalesBotBlocklyTheme,
+      sounds: false,
     });
 
     workspaceRef.current = workspace;
