@@ -61,6 +61,33 @@ function makeLineMap(lineCenterY: number, thickness: number = 4): Simulation {
   });
 }
 
+function makeWhiteMap(): Simulation {
+  const pxW = 2400;
+  const pxH = 1200;
+  const pixels = new Uint8ClampedArray(pxW * pxH * 4);
+  for (let i = 0; i < pixels.length; i += 4) {
+    pixels[i] = 255;
+    pixels[i + 1] = 255;
+    pixels[i + 2] = 255;
+    pixels[i + 3] = 255;
+  }
+  return createSimulation({
+    map: {
+      imageData: pixels,
+      width: pxW,
+      height: pxH,
+      metadata: {
+        width: 2400,
+        height: 1200,
+        scale: 1,
+        startPose: { x: 200, y: 600, heading: 0 },
+      },
+    },
+    robotConfig: { ...DEFAULT_ROBOT_CONFIG, sensorNoise: 0 },
+    seed: 42,
+  });
+}
+
 function makeProgram(ops: Array<{ op: OpCode; args?: number[]; label?: string }>): IRProgram {
   return {
     version: 1,
@@ -538,6 +565,187 @@ describe("IR v2 interpreter", () => {
 
     expect(sim.getTelemetry()[0].motorTargets.left).toBe(0);
     expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_MATH_DOMAIN")).toBe(true);
+  });
+
+  it("executes stop, reverse, and individual motor commands", () => {
+    const sim = makeSim();
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "motion.setMotorPair",
+        args: {
+          left: { kind: "literal", value: 0.4 },
+          right: { kind: "literal", value: 0.2 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.setPair" },
+      },
+      {
+        kind: "command",
+        op: "motion.reverseMotor",
+        args: { motor: "A" },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.reverse" },
+      },
+      {
+        kind: "command",
+        op: "motion.stopMotor",
+        args: { motor: "B" },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.stop" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim);
+
+    interp.step();
+    sim.tick();
+
+    expect(interp.done).toBe(true);
+    expect(sim.getTelemetry()[0].motorTargets.left).toBe(-0.4);
+    expect(sim.getTelemetry()[0].motorTargets.right).toBe(0);
+  });
+
+  it("auto-stops timed motor commands", () => {
+    const sim = makeSim();
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "motion.setMotorPairForTime",
+        args: {
+          left: { kind: "literal", value: 0.5 },
+          right: { kind: "literal", value: 0.5 },
+          seconds: { kind: "literal", value: 2 / 60 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.motor.setPairForTime" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim);
+
+    runTicks(interp, sim, 5);
+
+    expect(interp.done).toBe(true);
+    expect(sim.getTelemetry()[0].motorTargets.left).toBe(0.5);
+    expect(sim.getTelemetry().at(-1)?.motorTargets.left).toBe(0);
+  });
+
+  it("emits diagnostics when patrol runs before initialize and calibration", () => {
+    const sim = makeLineMap(600, 30);
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "lineFollower.followForTime",
+        args: {
+          speed: { kind: "literal", value: 0.3 },
+          seconds: { kind: "literal", value: 0.1 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.lineFollower.forTime" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim);
+
+    runTicks(interp, sim, 3);
+
+    expect(interp.done).toBe(true);
+    expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_LINE_FOLLOWER_NOT_INITIALIZED")).toBe(true);
+    expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_GRAYSCALE_NOT_CALIBRATED")).toBe(true);
+  });
+
+  it("stops a turn that cannot reacquire the line with a timeout diagnostic", () => {
+    const sim = makeWhiteMap();
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "hardware.initializeTankLineFollower",
+        args: {},
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.hardware.initializeTank" },
+      },
+      {
+        kind: "command",
+        op: "sensor.calibrateGrayscale",
+        args: {},
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.sensor.calibrateGrayscale" },
+      },
+      {
+        kind: "command",
+        op: "sensor.calibrateGrayscale",
+        args: {},
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.sensor.calibrateGrayscale" },
+      },
+      {
+        kind: "command",
+        op: "lineFollower.turnUntilBranch",
+        args: {
+          branch: "left",
+          left: { kind: "literal", value: -0.2 },
+          right: { kind: "literal", value: 0.2 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.lineFollower.turnUntilBranch" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim, { maxTurnTicks: 3 });
+
+    runTicks(interp, sim, 8);
+
+    expect(interp.done).toBe(true);
+    expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_LINE_TURN_TIMEOUT")).toBe(true);
+  });
+
+  it("runs initialize, calibrate, patrol, intersection, and turn on a line map", () => {
+    const sim = makeLineMap(600, 30);
+    const program = makeV2Program([
+      {
+        kind: "command",
+        op: "hardware.initializeTankLineFollower",
+        args: {},
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.hardware.initializeTank" },
+      },
+      {
+        kind: "command",
+        op: "sensor.calibrateGrayscale",
+        args: {},
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.sensor.calibrateGrayscale" },
+      },
+      {
+        kind: "command",
+        op: "sensor.calibrateGrayscale",
+        args: {},
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.sensor.calibrateGrayscale" },
+      },
+      {
+        kind: "command",
+        op: "lineFollower.followForTime",
+        args: {
+          speed: { kind: "literal", value: 0.25 },
+          seconds: { kind: "literal", value: 0.1 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.lineFollower.forTime" },
+      },
+      {
+        kind: "command",
+        op: "lineFollower.untilIntersection",
+        args: {
+          branch: "middle",
+          speed: { kind: "literal", value: 0.25 },
+          rushSeconds: { kind: "literal", value: 0 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.lineFollower.untilIntersection" },
+      },
+      {
+        kind: "command",
+        op: "lineFollower.turnUntilBranch",
+        args: {
+          branch: "middle",
+          left: { kind: "literal", value: 0 },
+          right: { kind: "literal", value: 0 },
+        },
+        metadata: { runtimeStatus: "implemented", handlerId: "runtime.lineFollower.turnUntilBranch" },
+      },
+    ]);
+    const interp = createInterpreter(program, sim, { maxPatrolTicks: 120, maxTurnTicks: 30 });
+    const startX = sim.state.robot.x;
+
+    runTicks(interp, sim, 80);
+
+    expect(interp.done).toBe(true);
+    expect(sim.state.robot.x).toBeGreaterThan(startX);
+    expect(interp.diagnostics.filter((diagnostic) => diagnostic.severity === "error")).toHaveLength(0);
   });
 });
 
@@ -1137,7 +1345,7 @@ describe("Interpreter", () => {
         { op: OpCode.LABEL, args: [], label: "lbl" },// 13 (nhãn #0)
         { op: OpCode.JUMP, args: [1] },              // 14 (nhảy tới nhãn 1 = "end")
         { op: OpCode.LABEL, args: [], label: "end" },// 15 (nhãn #1)
-        { op: OpCode.IF_SENSOR_VALUE, args: [3, 0, CompareOp.GT, 0] }, // 16 — nếu road3 > 0 → đi tới nhãn 0
+        { op: OpCode.IF_SENSOR_VALUE, args: [3, 200, CompareOp.GT, 0] }, // 16 — false branch keeps this coverage program finite
         { op: OpCode.END_PROGRAM },                  // 17
       ]);
       const interp = createInterpreter(prog, sim);

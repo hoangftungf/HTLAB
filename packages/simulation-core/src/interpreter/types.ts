@@ -190,6 +190,10 @@ export interface InterpreterConfig {
   maxLoopIterations?: number;
   /** Default timeout for wait-until when the node does not specify one. Defaults to 600 ticks. */
   waitUntilTimeoutTicks?: number;
+  /** Max ticks for patrol-line commands before a diagnostic stop. Defaults to 1200. */
+  maxPatrolTicks?: number;
+  /** Max ticks for turn-until-line commands before a diagnostic stop. Defaults to 360. */
+  maxTurnTicks?: number;
   /** Deterministic seed for v2 random expressions. */
   randomSeed?: number;
 }

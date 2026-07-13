@@ -21,6 +21,9 @@ const DEFAULT_MAX_INST_PER_TICK = 1000;
 const DEFAULT_MAX_TICKS = 18000;
 const DEFAULT_MAX_LOOP_ITERATIONS = 10000;
 const DEFAULT_WAIT_UNTIL_TIMEOUT_TICKS = 600;
+const DEFAULT_MAX_PATROL_TICKS = 1200;
+const DEFAULT_MAX_TURN_TICKS = 360;
+const LINE_FOLLOWER_MIN_DETECTION_TICKS = 3;
 
 interface LoopFrameV1 {
   startIp: number;
@@ -44,6 +47,50 @@ interface WaitUntilState {
   remaining: number;
   source?: IRSourceRef;
 }
+
+type MotorPort = "A" | "B" | "C" | "D" | "all";
+
+interface MotorTargets {
+  left: number;
+  right: number;
+}
+
+type ActiveMotion =
+  | {
+      type: "timedMotor";
+      remainingTicks: number;
+      source?: IRSourceRef;
+    }
+  | {
+      type: "motorUntil";
+      left: number;
+      right: number;
+      condition: IRBooleanExpression;
+      elapsedTicks: number;
+      timeoutTicks: number;
+      source?: IRSourceRef;
+    }
+  | {
+      type: "lineFollow";
+      mode: "continuous" | "forTime" | "untilIntersection";
+      speed: number;
+      remainingTicks?: number;
+      elapsedTicks: number;
+      timeoutTicks: number;
+      rushTicks: number;
+      source?: IRSourceRef;
+      diagnosticsIssued: boolean;
+    }
+  | {
+      type: "lineTurn";
+      branch: string;
+      left: number;
+      right: number;
+      elapsedTicks: number;
+      timeoutTicks: number;
+      source?: IRSourceRef;
+      diagnosticsIssued: boolean;
+    };
 
 function compare(a: number, op: CompareOp, b: number): boolean {
   switch (op) {
@@ -359,6 +406,8 @@ function createV2Interpreter(
   const maxInstructionsPerTick = config.maxInstructionsPerTick ?? DEFAULT_MAX_INST_PER_TICK;
   const maxLoopIterations = config.maxLoopIterations ?? DEFAULT_MAX_LOOP_ITERATIONS;
   const waitUntilTimeoutTicks = config.waitUntilTimeoutTicks ?? DEFAULT_WAIT_UNTIL_TIMEOUT_TICKS;
+  const maxPatrolTicks = config.maxPatrolTicks ?? DEFAULT_MAX_PATROL_TICKS;
+  const maxTurnTicks = config.maxTurnTicks ?? DEFAULT_MAX_TURN_TICKS;
   const rng = createRNG(config.randomSeed ?? 42);
   const diagnostics: IRDiagnostic[] = [...program.diagnostics];
   const variables = new Map<string, number>();
@@ -366,11 +415,86 @@ function createV2Interpreter(
 
   let waitCounter = 0;
   let waitUntil: WaitUntilState | null = null;
+  let activeMotion: ActiveMotion | null = null;
+  let motorTargets: MotorTargets = { left: 0, right: 0 };
+  let lineFollowerInitialized = false;
+  let lineFollowerMode: "tank" | "omni" | null = null;
   let tickCount = 0;
   let done = false;
 
   function pushDiagnostic(diagnostic: IRDiagnostic): void {
     diagnostics.push(diagnostic);
+  }
+
+  function clampPower(value: number): number {
+    return Math.max(-1, Math.min(1, value));
+  }
+
+  function percentToPower(value: number): number {
+    return clampPower(Math.abs(value) > 1 ? value / 100 : value);
+  }
+
+  function motorPort(value: IRFieldValue | undefined, fallback: MotorPort = "all"): MotorPort {
+    const port = toText(value, fallback).toUpperCase();
+    if (port === "A" || port === "B" || port === "C" || port === "D" || port === "ALL") {
+      return port === "ALL" ? "all" : port;
+    }
+    return fallback;
+  }
+
+  function setMotorTargets(left: number, right: number): void {
+    motorTargets = { left: clampPower(left), right: clampPower(right) };
+    sim.setMotors(motorTargets.left, motorTargets.right);
+  }
+
+  function setMotorByPort(port: MotorPort, power: number, source?: IRSourceRef): void {
+    const normalized = clampPower(power);
+    if (port === "all") {
+      setMotorTargets(normalized, normalized);
+      return;
+    }
+    if (port === "A") {
+      setMotorTargets(normalized, motorTargets.right);
+      return;
+    }
+    if (port === "B") {
+      setMotorTargets(motorTargets.left, normalized);
+      return;
+    }
+    pushDiagnostic(createDiagnostic("HTLAB_MOTOR_PORT_UNSUPPORTED", `Motor ${port} is not mapped in the differential-drive simulator.`, source));
+  }
+
+  function stopMotorByPort(port: MotorPort, source?: IRSourceRef): void {
+    if (port === "all") {
+      setMotorTargets(0, 0);
+      return;
+    }
+    setMotorByPort(port, 0, source);
+  }
+
+  function reverseMotorByPort(port: MotorPort, source?: IRSourceRef): void {
+    if (port === "all") {
+      setMotorTargets(-motorTargets.left, -motorTargets.right);
+      return;
+    }
+    if (port === "A") {
+      setMotorTargets(-motorTargets.left, motorTargets.right);
+      return;
+    }
+    if (port === "B") {
+      setMotorTargets(motorTargets.left, -motorTargets.right);
+      return;
+    }
+    pushDiagnostic(createDiagnostic("HTLAB_MOTOR_PORT_UNSUPPORTED", `Motor ${port} cannot be reversed in the differential-drive simulator.`, source));
+  }
+
+  function directionSign(command: IRCommandV2): number {
+    const direction = toText(command.args.direction, "Forward").toLowerCase();
+    return direction.includes("back") ? -1 : 1;
+  }
+
+  function powerArg(command: IRCommandV2, names: string[], fallback = 0): number {
+    return percentToPower(numericArg(command, names, fallback));
   }
 
   function numericArg(command: IRCommandV2, names: string[], fallback = 0): number {
@@ -543,6 +667,149 @@ function createV2Interpreter(
     return false;
   }
 
+  function lineFollowerReady(active: { diagnosticsIssued: boolean; source?: IRSourceRef }): boolean {
+    let ready = true;
+    if (!lineFollowerInitialized) {
+      if (!active.diagnosticsIssued) {
+        pushDiagnostic(createDiagnostic("HTLAB_LINE_FOLLOWER_NOT_INITIALIZED", "Line follower command ran before patrol initialize.", active.source));
+      }
+      ready = false;
+    }
+    if (!sim.state.sensors.calibrated) {
+      if (!active.diagnosticsIssued) {
+        pushDiagnostic(createDiagnostic("HTLAB_GRAYSCALE_NOT_CALIBRATED", "Line follower command ran before black and white detection calibration.", active.source));
+      }
+      ready = false;
+    }
+    active.diagnosticsIssued = true;
+    return ready;
+  }
+
+  function roadCount(): number {
+    return sim.state.sensors.roads.filter((road) => road > 50).length;
+  }
+
+  function detectsIntersection(): boolean {
+    const roads = sim.state.sensors.roads as number[];
+    const left = detectGroup(roads, 0) === 1;
+    const middle = detectGroup(roads, 1) === 1;
+    const right = detectGroup(roads, 2) === 1;
+    return roadCount() >= 3 || (left && middle && right);
+  }
+
+  function detectsBranch(branch: string): boolean {
+    const normalized = branch.toLowerCase();
+    if (normalized.includes("cross") || normalized.includes("t/") || normalized.includes("intersection")) {
+      return detectsIntersection();
+    }
+    const group = normalized.includes("left") ? 0 : normalized.includes("right") ? 2 : 1;
+    return detectGroup(sim.state.sensors.roads as number[], group) === 1;
+  }
+
+  function applyLineFollower(speed: number): void {
+    const base = clampPower(Math.abs(speed));
+    const sensors = sim.state.sensors;
+    if (roadCount() === 0) {
+      setMotorTargets(base * 0.25, -base * 0.25);
+      return;
+    }
+    const error = sensors.linePosition / 100;
+    const correction = clampPower(error * base * 0.8);
+    setMotorTargets(base + correction, base - correction);
+  }
+
+  function completeActiveMotion(stop = true): void {
+    activeMotion = null;
+    if (stop) setMotorTargets(0, 0);
+  }
+
+  function advanceActiveMotion(): boolean {
+    const active = activeMotion;
+    if (!active) return false;
+
+    if (active.type === "timedMotor") {
+      if (active.remainingTicks <= 0) {
+        completeActiveMotion();
+        return false;
+      }
+      active.remainingTicks--;
+      return true;
+    }
+
+    if (active.type === "motorUntil") {
+      if (evalBoolean(active.condition)) {
+        completeActiveMotion();
+        return false;
+      }
+      if (active.elapsedTicks >= active.timeoutTicks) {
+        pushDiagnostic(createDiagnostic("HTLAB_MOTOR_UNTIL_TIMEOUT", `Motor-until command stopped after ${active.timeoutTicks} ticks.`, active.source));
+        completeActiveMotion();
+        return false;
+      }
+      setMotorTargets(active.left, active.right);
+      active.elapsedTicks++;
+      return true;
+    }
+
+    if (active.type === "lineFollow") {
+      if (!lineFollowerReady(active)) {
+        completeActiveMotion();
+        return false;
+      }
+
+      if (active.mode === "forTime") {
+        if ((active.remainingTicks ?? 0) <= 0) {
+          completeActiveMotion();
+          return false;
+        }
+        applyLineFollower(active.speed);
+        active.remainingTicks = (active.remainingTicks ?? 0) - 1;
+        return true;
+      }
+
+      if (
+        active.mode === "untilIntersection" &&
+        active.elapsedTicks >= LINE_FOLLOWER_MIN_DETECTION_TICKS &&
+        detectsIntersection()
+      ) {
+        if (active.rushTicks > 0) {
+          setMotorTargets(active.speed, active.speed);
+          activeMotion = { type: "timedMotor", remainingTicks: active.rushTicks, source: active.source };
+          return true;
+        }
+        completeActiveMotion();
+        return false;
+      }
+
+      if (active.elapsedTicks >= active.timeoutTicks) {
+        pushDiagnostic(createDiagnostic("HTLAB_PATROL_TIMEOUT", `Line follower stopped after ${active.timeoutTicks} ticks.`, active.source));
+        completeActiveMotion();
+        return false;
+      }
+
+      applyLineFollower(active.speed);
+      active.elapsedTicks++;
+      return true;
+    }
+
+    if (!lineFollowerReady(active)) {
+      completeActiveMotion();
+      return false;
+    }
+    if (active.elapsedTicks >= LINE_FOLLOWER_MIN_DETECTION_TICKS && detectsBranch(active.branch)) {
+      completeActiveMotion();
+      return false;
+    }
+    if (active.elapsedTicks >= active.timeoutTicks) {
+      pushDiagnostic(createDiagnostic("HTLAB_LINE_TURN_TIMEOUT", `Turn could not reacquire ${active.branch} within ${active.timeoutTicks} ticks.`, active.source));
+      completeActiveMotion();
+      return false;
+    }
+    setMotorTargets(active.left, active.right);
+    active.elapsedTicks++;
+    return true;
+  }
+
   function completeFrame(frame: V2Frame): void {
     if (!frame.loop) {
       frames.pop();
@@ -591,8 +858,28 @@ function createV2Interpreter(
   function executeCommand(command: IRCommandV2, frame: V2Frame): boolean {
     switch (command.op) {
       case "hardware.initialize":
+        sim.reset();
+        motorTargets = { left: 0, right: 0 };
+        lineFollowerInitialized = false;
+        lineFollowerMode = null;
+        activeMotion = null;
+        frame.index++;
+        return false;
+
       case "hardware.initializeTankLineFollower":
         sim.reset();
+        motorTargets = { left: 0, right: 0 };
+        lineFollowerInitialized = true;
+        lineFollowerMode = "tank";
+        frame.index++;
+        return false;
+
+      case "hardware.initializeOmniLineFollower":
+        sim.reset();
+        motorTargets = { left: 0, right: 0 };
+        lineFollowerInitialized = true;
+        lineFollowerMode = "omni";
+        pushDiagnostic(createDiagnostic("HTLAB_OMNI_STUB", "Omni-wheel line follower is configured but approximated by differential-drive physics.", command.source));
         frame.index++;
         return false;
 
@@ -601,23 +888,170 @@ function createV2Interpreter(
         frame.index++;
         return false;
 
-      case "motion.setMotorPair":
+      case "motion.setMotorPair": {
+        const sign = directionSign(command);
+        const left = numericArg(command, ["left", "leftSpeed", "powerA"], 0) * sign;
+        const right = numericArg(command, ["right", "rightSpeed", "powerB"], 0) * sign;
+        setMotorTargets(left, right);
+        frame.index++;
+        return false;
+      }
+
       case "motion.setMotorPairForTime": {
-        const left = numericArg(command, ["left", "leftSpeed"], 0);
-        const right = numericArg(command, ["right", "rightSpeed"], 0);
-        sim.setMotors(left, right);
+        const sign = directionSign(command);
+        const left = numericArg(command, ["left", "leftSpeed", "powerA"], 0) * sign;
+        const right = numericArg(command, ["right", "rightSpeed", "powerB"], 0) * sign;
+        setMotorTargets(left, right);
         const seconds = numericArg(command, ["seconds"], 0);
         frame.index++;
         if (seconds > 0) {
-          waitCounter = Math.round(seconds * 60);
+          activeMotion = {
+            type: "timedMotor",
+            remainingTicks: Math.max(1, Math.round(seconds * 60)) - 1,
+            source: command.source,
+          };
           return true;
         }
         return false;
       }
 
+      case "motion.setMotor": {
+        setMotorByPort(motorPort(command.args.motor, "A"), powerArg(command, ["power"], 0), command.source);
+        frame.index++;
+        return false;
+      }
+
+      case "motion.setMotorForTime": {
+        setMotorByPort(motorPort(command.args.motor, "A"), powerArg(command, ["power"], 0), command.source);
+        const seconds = numericArg(command, ["seconds"], 0);
+        frame.index++;
+        if (seconds > 0) {
+          activeMotion = {
+            type: "timedMotor",
+            remainingTicks: Math.max(1, Math.round(seconds * 60)) - 1,
+            source: command.source,
+          };
+          return true;
+        }
+        return false;
+      }
+
+      case "motion.setMotorPairUntil": {
+        const left = numericArg(command, ["left", "leftSpeed"], 0);
+        const right = numericArg(command, ["right", "rightSpeed"], 0);
+        activeMotion = {
+          type: "motorUntil",
+          left,
+          right,
+          condition: asBooleanExpression(command.args.condition),
+          elapsedTicks: 0,
+          timeoutTicks: Math.max(1, Math.round(numericArg(command, ["timeoutTicks"], maxPatrolTicks))),
+          source: command.source,
+        };
+        frame.index++;
+        return advanceActiveMotion();
+      }
+
+      case "motion.reverseMotor":
+        reverseMotorByPort(motorPort(command.args.motor, "all"), command.source);
+        frame.index++;
+        return false;
+
       case "motion.stopMotor":
+        stopMotorByPort(motorPort(command.args.motor, "all"), command.source);
+        frame.index++;
+        return false;
+
       case "motion.stopMotorPair":
-        sim.setMotors(0, 0);
+        setMotorTargets(0, 0);
+        frame.index++;
+        return false;
+
+      case "motion.setMotorPairForEncoderDegrees":
+      case "motion.setMotorForEncoderDegrees":
+      case "sensor.motorEncoder":
+      case "sensor.resetMotorEncoder":
+        pushDiagnostic(createDiagnostic("HTLAB_ENCODER_UNSUPPORTED", "Encoder/angle motor control is not available in the current simulator.", command.source));
+        frame.index++;
+        return false;
+
+      case "motion.omniMove":
+      case "motion.omniTurn":
+      case "motion.omniStop":
+        pushDiagnostic(createDiagnostic("HTLAB_OMNI_STUB", "Omni-wheel motion is not represented by the differential-drive physics model.", command.source));
+        frame.index++;
+        return false;
+
+      case "motion.steeringGearAngle":
+      case "motion.steeringGearRotation":
+      case "motion.restoreSteeringTorque":
+        pushDiagnostic(createDiagnostic("HTLAB_TELEMETRY_ONLY", `${command.op} recorded as telemetry-only; robot physics unchanged.`, command.source, "info"));
+        frame.index++;
+        return false;
+
+      case "lineFollower.followContinuous": {
+        activeMotion = {
+          type: "lineFollow",
+          mode: "continuous",
+          speed: clampPower(numericArg(command, ["speed"], 0.3)),
+          elapsedTicks: 0,
+          timeoutTicks: Math.max(1, Math.round(numericArg(command, ["timeoutTicks"], maxPatrolTicks))),
+          rushTicks: 0,
+          source: command.source,
+          diagnosticsIssued: false,
+        };
+        frame.index++;
+        return advanceActiveMotion();
+      }
+
+      case "lineFollower.followForTime": {
+        activeMotion = {
+          type: "lineFollow",
+          mode: "forTime",
+          speed: clampPower(numericArg(command, ["speed"], 0.3)),
+          remainingTicks: Math.max(1, Math.round(numericArg(command, ["seconds"], 0) * 60)),
+          elapsedTicks: 0,
+          timeoutTicks: Math.max(1, Math.round(numericArg(command, ["timeoutTicks"], maxPatrolTicks))),
+          rushTicks: 0,
+          source: command.source,
+          diagnosticsIssued: false,
+        };
+        frame.index++;
+        return advanceActiveMotion();
+      }
+
+      case "lineFollower.untilIntersection": {
+        activeMotion = {
+          type: "lineFollow",
+          mode: "untilIntersection",
+          speed: clampPower(numericArg(command, ["speed"], 0.3)),
+          elapsedTicks: 0,
+          timeoutTicks: Math.max(1, Math.round(numericArg(command, ["timeoutTicks"], maxPatrolTicks))),
+          rushTicks: Math.max(0, Math.round(numericArg(command, ["rushSeconds"], 0) * 60)),
+          source: command.source,
+          diagnosticsIssued: false,
+        };
+        frame.index++;
+        return advanceActiveMotion();
+      }
+
+      case "lineFollower.turnUntilBranch": {
+        activeMotion = {
+          type: "lineTurn",
+          branch: toText(command.args.branch, "middle"),
+          left: clampPower(numericArg(command, ["left", "leftSpeed"], 0)),
+          right: clampPower(numericArg(command, ["right", "rightSpeed"], 0)),
+          elapsedTicks: 0,
+          timeoutTicks: Math.max(1, Math.round(numericArg(command, ["timeoutTicks"], maxTurnTicks))),
+          source: command.source,
+          diagnosticsIssued: false,
+        };
+        frame.index++;
+        return advanceActiveMotion();
+      }
+
+      case "compat.startButton":
+        pushDiagnostic(createDiagnostic("HTLAB_START_BUTTON_STUB", "Start button is an intentional no-op compatibility block.", command.source, "info"));
         frame.index++;
         return false;
 
@@ -722,6 +1156,13 @@ function createV2Interpreter(
             command.source,
             command.metadata.runtimeStatus === "blocked-by-sandbox" ? "error" : "warning",
           ));
+        } else if (command.metadata.runtimeStatus === "telemetry-only") {
+          pushDiagnostic(createDiagnostic(
+            "HTLAB_TELEMETRY_ONLY",
+            `${command.source?.blockType ?? command.op} is telemetry-only in this simulator.`,
+            command.source,
+            "info",
+          ));
         } else {
           pushDiagnostic(createDiagnostic("HTLAB_UNKNOWN_COMMAND", `Unknown v2 command ${command.op}.`, command.source));
         }
@@ -736,6 +1177,10 @@ function createV2Interpreter(
     variables.clear();
     waitCounter = 0;
     waitUntil = null;
+    activeMotion = null;
+    motorTargets = { left: 0, right: 0 };
+    lineFollowerInitialized = false;
+    lineFollowerMode = null;
     tickCount = 0;
     diagnostics.length = 0;
     diagnostics.push(...program.diagnostics);
@@ -769,6 +1214,10 @@ function createV2Interpreter(
           return true;
         }
       }
+    }
+
+    if (activeMotion && advanceActiveMotion()) {
+      return true;
     }
 
     let executed = 0;

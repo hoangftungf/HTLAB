@@ -224,6 +224,10 @@ export function createGrayscaleSensor(
         // Ngưỡng trắng = mẫu trắng + một biên an toàn (10% hướng về đen)
         // Ngưỡng đen = mẫu đen - một biên an toàn
         const range = bs[i] - ws[i];
+        if (range <= 10) {
+          roadThresholds[i] = { ...DEFAULT_THRESHOLDS };
+          continue;
+        }
         const margin = Math.max(range * 0.1, 5);
         roadThresholds[i] = {
           white: ws[i] + margin,

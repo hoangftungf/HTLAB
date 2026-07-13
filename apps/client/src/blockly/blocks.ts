@@ -766,3 +766,473 @@ Blockly.Blocks["control_return"] = {
     });
   },
 };
+
+// ---- C-011 Motion and Patrol line runtime blocks ----
+
+const MOTOR_PORT_OPTIONS = [["A", "A"], ["B", "B"], ["C", "C"], ["D", "D"], ["all", "all"]];
+const SENSOR_PORT_OPTIONS = [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
+const DIRECTION_OPTIONS = [["Forward", "Forward"], ["Backward", "Backward"]];
+const TURN_DIRECTION_OPTIONS = [["Turn left", "Turn left"], ["Turn right", "Turn right"]];
+const BRANCH_OPTIONS = [["left", "left"], ["middle", "middle"], ["right", "right"], ["T/Cross intersection", "T/Cross intersection"]];
+const COMPARE_OPTIONS = [["<", "<"], [">", ">"], ["=", "="], ["!=", "!="], ["<=", "<="], [">=", ">="]];
+
+Blockly.Blocks["motion_tank_drive_continuous"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_tank_drive_continuous",
+      message0: "Move left motor %1 right motor %2 %3 power %4 %%",
+      args0: [
+        { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "direction", options: DIRECTION_OPTIONS },
+        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Drive the differential left/right motor pair continuously",
+    });
+  },
+};
+
+Blockly.Blocks["motion_tank_drive_seconds"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_tank_drive_seconds",
+      message0: "Move left motor %1 right motor %2 %3 power %4 %% for %5 sec",
+      args0: [
+        { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "direction", options: DIRECTION_OPTIONS },
+        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+        { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Drive the motor pair for a duration, then stop",
+    });
+  },
+};
+
+Blockly.Blocks["motion_stop_pair"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_stop_pair",
+      message0: "Stop left motor %1 right motor %2",
+      args0: [
+        { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Stop the differential motor pair",
+    });
+  },
+};
+
+Blockly.Blocks["motion_single_motor_power"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_single_motor_power",
+      message0: "Set motor %1 power %2 %%",
+      args0: [
+        { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Set one differential motor where A=left and B=right",
+    });
+  },
+};
+
+Blockly.Blocks["motion_dual_motor_seconds"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_dual_motor_seconds",
+      message0: "Set motor %1 power %2 %% motor %3 power %4 %% for %5 sec",
+      args0: [
+        { type: "field_dropdown", name: "motorA", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "powerA", value: 40, min: -100, max: 100 },
+        { type: "field_dropdown", name: "motorB", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "powerB", value: 40, min: -100, max: 100 },
+        { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Set two motors for a duration, then stop",
+    });
+  },
+};
+
+Blockly.Blocks["motion_single_motor_seconds"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_single_motor_seconds",
+      message0: "Set motor %1 power %2 %% for %3 sec",
+      args0: [
+        { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+        { type: "field_number", name: "seconds", value: 1, min: 0, precision: 0.01 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Set one motor for a duration, then stop",
+    });
+  },
+};
+
+Blockly.Blocks["motion_dual_motor_degrees"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_dual_motor_degrees",
+      message0: "Set motor %1 power %2 %% motor %3 power %4 %% rotate %5 degrees",
+      args0: [
+        { type: "field_dropdown", name: "motorA", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "powerA", value: 40, min: -100, max: 100 },
+        { type: "field_dropdown", name: "motorB", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "powerB", value: 40, min: -100, max: 100 },
+        { type: "field_number", name: "degrees", value: 360 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Encoder-based motion currently emits a diagnostic",
+    });
+  },
+};
+
+Blockly.Blocks["motion_single_motor_degrees"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_single_motor_degrees",
+      message0: "Set motor %1 power %2 %% rotate %3 degrees",
+      args0: [
+        { type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+        { type: "field_number", name: "degrees", value: 360 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Encoder-based motion currently emits a diagnostic",
+    });
+  },
+};
+
+Blockly.Blocks["motion_reverse_motor"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_reverse_motor",
+      message0: "Reverse motor %1",
+      args0: [{ type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS }],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Reverse the current target for a motor",
+    });
+  },
+};
+
+Blockly.Blocks["motion_stop_motor"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_stop_motor",
+      message0: "Stop motor %1",
+      args0: [{ type: "field_dropdown", name: "motor", options: MOTOR_PORT_OPTIONS }],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Stop one motor or all motors",
+    });
+  },
+};
+
+Blockly.Blocks["motion_omni_move"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_omni_move",
+      message0: "Omni-wheel move power %1 %% towards %2 degrees",
+      args0: [
+        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+        { type: "field_number", name: "headingDegrees", value: 0 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Omni-wheel motion emits a differential-drive diagnostic",
+    });
+  },
+};
+
+Blockly.Blocks["motion_omni_turn"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_omni_turn",
+      message0: "Omni-wheel turn %1 power %2 %%",
+      args0: [
+        { type: "field_dropdown", name: "direction", options: TURN_DIRECTION_OPTIONS },
+        { type: "field_number", name: "power", value: 40, min: -100, max: 100 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Omni-wheel turn emits a differential-drive diagnostic",
+    });
+  },
+};
+
+Blockly.Blocks["motion_omni_stop"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_omni_stop",
+      message0: "Stop omni-wheel move",
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Omni-wheel stop emits a diagnostic",
+    });
+  },
+};
+
+Blockly.Blocks["motion_steering_angle_mode"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_steering_angle_mode",
+      message0: "Steering gear angle mode ID %1 speed %2 angle %3",
+      args0: [
+        { type: "field_number", name: "id", value: 1, min: 1 },
+        { type: "field_number", name: "speed", value: 40, min: 0, max: 100 },
+        { type: "field_number", name: "angle", value: 0 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Telemetry-only steering gear command",
+    });
+  },
+};
+
+Blockly.Blocks["motion_steering_rotation_mode"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_steering_rotation_mode",
+      message0: "Steering gear rotation mode ID %1 speed %2",
+      args0: [
+        { type: "field_number", name: "id", value: 1, min: 1 },
+        { type: "field_number", name: "speed", value: 40, min: -100, max: 100 },
+      ],
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Telemetry-only steering gear command",
+    });
+  },
+};
+
+Blockly.Blocks["motion_restore_steering_torque"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "motion_restore_steering_torque",
+      message0: "Restore steering torque",
+      colour: 120,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Telemetry-only steering gear command",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_initialize_tank"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_initialize_tank",
+      message0: "Initialize tank line follower left %1 dir %2 right %3 dir %4 grayscale port %5",
+      args0: [
+        { type: "field_dropdown", name: "leftMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "leftDirection", value: 100 },
+        { type: "field_dropdown", name: "rightMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_number", name: "rightDirection", value: -100 },
+        { type: "field_dropdown", name: "grayscalePort", options: SENSOR_PORT_OPTIONS },
+      ],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Configure tank-drive patrol line mode",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_initialize_omni"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_initialize_omni",
+      message0: "Initialize omni line follower LF %1 RF %2 RR %3 LR %4 grayscale port %5",
+      args0: [
+        { type: "field_dropdown", name: "leftFrontMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "rightFrontMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "rightRearMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "leftRearMotor", options: MOTOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "grayscalePort", options: SENSOR_PORT_OPTIONS },
+      ],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Omni patrol mode is accepted with a diagnostic approximation",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_black_white_detection"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_black_white_detection",
+      message0: "Black and white detection",
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Calibrate grayscale thresholds using the current map samples",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_line_speed"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_line_speed",
+      message0: "Patrol line speed %1",
+      args0: [{ type: "field_number", name: "speed", value: 30, min: 0, max: 100 }],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Follow the line continuously until the patrol timeout guard stops it",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_line_for_time"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_line_for_time",
+      message0: "Patrol line speed %1 for %2 sec",
+      args0: [
+        { type: "field_number", name: "speed", value: 30, min: 0, max: 100 },
+        { type: "field_number", name: "seconds", value: 0.5, min: 0, precision: 0.01 },
+      ],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Follow the line for a duration",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_line_intersections"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_line_intersections",
+      message0: "Patrol until %1 speed %2 rush through %3 sec",
+      args0: [
+        { type: "field_dropdown", name: "branch", options: BRANCH_OPTIONS },
+        { type: "field_number", name: "speed", value: 30, min: 0, max: 100 },
+        { type: "field_number", name: "rushSeconds", value: 0, min: 0, precision: 0.01 },
+      ],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Follow the line until the sensor pattern looks like an intersection",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_turn_branch"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_turn_branch",
+      message0: "Turn to %1 left speed %2 right speed %3",
+      args0: [
+        { type: "field_dropdown", name: "branch", options: BRANCH_OPTIONS },
+        { type: "field_number", name: "leftSpeed", value: 0, min: -100, max: 100 },
+        { type: "field_number", name: "rightSpeed", value: 0, min: -100, max: 100 },
+      ],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Turn until the selected sensor group detects the line or timeout guard stops it",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_start_motor_time"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_start_motor_time",
+      message0: "Start motor left speed %1 right speed %2 time %3 sec",
+      args0: [
+        { type: "field_number", name: "leftSpeed", value: 20, min: -100, max: 100 },
+        { type: "field_number", name: "rightSpeed", value: 20, min: -100, max: 100 },
+        { type: "field_number", name: "seconds", value: 0.5, min: 0, precision: 0.01 },
+      ],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Start both motors for a duration",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_start_motor_angle"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_start_motor_angle",
+      message0: "Start motor left speed %1 right speed %2 angle %3",
+      args0: [
+        { type: "field_number", name: "leftSpeed", value: 20, min: -100, max: 100 },
+        { type: "field_number", name: "rightSpeed", value: 20, min: -100, max: 100 },
+        { type: "field_number", name: "degrees", value: 360 },
+      ],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Encoder-based patrol motion currently emits a diagnostic",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_start_motor_until_sensor"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_start_motor_until_sensor",
+      message0: "Start motor left speed %1 right speed %2 until sensor %3 %4 %5",
+      args0: [
+        { type: "field_number", name: "leftSpeed", value: 20, min: -100, max: 100 },
+        { type: "field_number", name: "rightSpeed", value: 20, min: -100, max: 100 },
+        { type: "field_dropdown", name: "sensor", options: SENSOR_PORT_OPTIONS },
+        { type: "field_dropdown", name: "compare", options: COMPARE_OPTIONS },
+        { type: "field_number", name: "threshold", value: 50 },
+      ],
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Run motors until a grayscale sensor condition becomes true",
+    });
+  },
+};
+
+Blockly.Blocks["patrol_start_button"] = {
+  init(this: Blockly.Block) {
+    this.jsonInit({
+      type: "patrol_start_button",
+      message0: "Start button",
+      colour: 30,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: "Intentional no-op compatibility block",
+    });
+  },
+};

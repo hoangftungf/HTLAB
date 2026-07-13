@@ -109,8 +109,35 @@ const POWER_SPEEDS: Record<string, number> = {
 };
 
 const V2_ONLY_BLOCKS = new Set([
+  "motion_tank_drive_continuous",
+  "motion_tank_drive_seconds",
+  "motion_stop_pair",
+  "motion_single_motor_power",
+  "motion_dual_motor_seconds",
+  "motion_single_motor_seconds",
+  "motion_dual_motor_degrees",
+  "motion_single_motor_degrees",
+  "motion_reverse_motor",
+  "motion_stop_motor",
+  "motion_omni_move",
+  "motion_omni_turn",
+  "motion_omni_stop",
+  "motion_steering_angle_mode",
+  "motion_steering_rotation_mode",
+  "motion_restore_steering_torque",
   "motion_set_motors_v2",
   "motion_set_motors_for_time_v2",
+  "patrol_initialize_tank",
+  "patrol_initialize_omni",
+  "patrol_black_white_detection",
+  "patrol_line_speed",
+  "patrol_line_for_time",
+  "patrol_line_intersections",
+  "patrol_turn_branch",
+  "patrol_start_motor_time",
+  "patrol_start_motor_angle",
+  "patrol_start_motor_until_sensor",
+  "patrol_start_button",
   "set_var_v2",
   "value_number",
   "value_variable",
@@ -126,6 +153,9 @@ const V2_ONLY_BLOCKS = new Set([
   "logic_not_v2",
   "logic_sensor_group",
   "remote_control_button",
+  "sensor_integrated_grayscale_value",
+  "sensor_integrated_grayscale_detect_black",
+  "sensor_remote_control_button",
   "control_if_v2",
   "control_if_else_v2",
   "control_repeat_times_v2",
@@ -235,6 +265,7 @@ function sourceFor(block: Blockly.Block, category = categoryForType(block.type))
 }
 
 function categoryForType(type: string): string {
+  if (type.startsWith("patrol_")) return "Patrol line";
   if (type.includes("motion") || type.includes("motor") || type.includes("turn") || type === "patrol_line") return "Movement";
   if (type.includes("sensor") || type.includes("line_position") || type.includes("remote")) return "Sensors";
   if (type.includes("math") || type.includes("value")) return "Values";
@@ -307,6 +338,10 @@ function fieldBoolean(block: Blockly.Block, name: string, fallback = false): boo
   return value === "TRUE" || value === "1" || value === "YES";
 }
 
+function percentPower(value: number): IRValueExpressionLocal {
+  return literal(Math.max(-1, Math.min(1, value / 100)));
+}
+
 function valueFromInput(block: Blockly.Block, name: string, fallback: IRPrimitiveLocal = 0): IRValueExpressionLocal {
   const child = block.getInputTargetBlock(name);
   return child ? valueFromBlock(child) : literal(fallback);
@@ -329,6 +364,17 @@ function compareOpFromField(block: Blockly.Block, fallback: IRCompareOpNameLocal
   if (op === ">") return "GT";
   if (op === ">=") return "GTE";
   return fallback;
+}
+
+function compareOpFromSymbol(value: string): IRCompareOpNameLocal {
+  const op = value.toUpperCase();
+  if (op === "=" || op === "==" || op === "EQ") return "EQ";
+  if (op === "!=" || op === "NEQ") return "NEQ";
+  if (op === "<" || op === "LT") return "LT";
+  if (op === "<=" || op === "LTE") return "LTE";
+  if (op === ">" || op === "GT") return "GT";
+  if (op === ">=" || op === "GTE") return "GTE";
+  return "GT";
 }
 
 function binaryOpFromField(block: Blockly.Block): string {
@@ -396,16 +442,20 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
 
     case "read_sensor_road":
     case "value_sensor_road":
+    case "sensor_integrated_grayscale_value":
       return {
         kind: "sensor",
         sensor: "integrated-grayscale",
-        port: "builtin",
-        channel: fieldNumber(block, "ROAD", 3),
+        port: fieldText(block, "port", "builtin"),
+        channel: fieldNumber(block, block.type === "sensor_integrated_grayscale_value" ? "channel" : "ROAD", 3),
       };
 
     case "line_position":
     case "value_line_position":
       return { kind: "sensor", sensor: "line-position" };
+
+    case "sensor_current_timer_value":
+      return { kind: "sensor", sensor: "timer" };
 
     case "math_binary":
     case "math_arithmetic":
@@ -490,11 +540,21 @@ function booleanFromBlock(block: Blockly.Block): IRBooleanExpressionLocal {
       };
 
     case "remote_control_button":
+    case "sensor_remote_control_button":
       return {
         kind: "sensor",
         sensor: "remote-control",
-        port: fieldText(block, "BUTTON", "A"),
+        port: fieldText(block, block.type === "sensor_remote_control_button" ? "button" : "BUTTON", "A"),
         predicate: "pressed",
+      };
+
+    case "sensor_integrated_grayscale_detect_black":
+      return {
+        kind: "sensor",
+        sensor: "integrated-grayscale",
+        port: fieldText(block, "port", "5"),
+        channel: fieldNumber(block, "channel", 1),
+        predicate: "black",
       };
 
     case "read_sensor_road":
@@ -564,6 +624,178 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       ];
     }
 
+    case "motion_tank_drive_continuous": {
+      const sign = fieldText(block, "direction", "Forward") === "Backward" ? -1 : 1;
+      return [
+        commandNode(block, "motion.setMotorPair", {
+          leftMotor: fieldText(block, "leftMotor", "A"),
+          rightMotor: fieldText(block, "rightMotor", "B"),
+          left: percentPower(fieldNumber(block, "power", 40) * sign),
+          right: percentPower(fieldNumber(block, "power", 40) * sign),
+        }),
+      ];
+    }
+
+    case "motion_tank_drive_seconds": {
+      const sign = fieldText(block, "direction", "Forward") === "Backward" ? -1 : 1;
+      return [
+        commandNode(block, "motion.setMotorPairForTime", {
+          leftMotor: fieldText(block, "leftMotor", "A"),
+          rightMotor: fieldText(block, "rightMotor", "B"),
+          left: percentPower(fieldNumber(block, "power", 40) * sign),
+          right: percentPower(fieldNumber(block, "power", 40) * sign),
+          seconds: literal(fieldNumber(block, "seconds", 1)),
+        }),
+      ];
+    }
+
+    case "motion_stop_pair":
+      return [
+        commandNode(block, "motion.stopMotorPair", {
+          leftMotor: fieldText(block, "leftMotor", "A"),
+          rightMotor: fieldText(block, "rightMotor", "B"),
+        }),
+      ];
+
+    case "motion_single_motor_power":
+      return [
+        commandNode(block, "motion.setMotor", {
+          motor: fieldText(block, "motor", "A"),
+          power: percentPower(fieldNumber(block, "power", 40)),
+        }),
+      ];
+
+    case "motion_dual_motor_seconds":
+      return [
+        commandNode(block, "motion.setMotorPairForTime", {
+          motorA: fieldText(block, "motorA", "A"),
+          motorB: fieldText(block, "motorB", "B"),
+          left: percentPower(fieldNumber(block, "powerA", 40)),
+          right: percentPower(fieldNumber(block, "powerB", 40)),
+          seconds: literal(fieldNumber(block, "seconds", 1)),
+        }),
+      ];
+
+    case "motion_single_motor_seconds":
+      return [
+        commandNode(block, "motion.setMotorForTime", {
+          motor: fieldText(block, "motor", "A"),
+          power: percentPower(fieldNumber(block, "power", 40)),
+          seconds: literal(fieldNumber(block, "seconds", 1)),
+        }),
+      ];
+
+    case "motion_dual_motor_degrees":
+      return [
+        commandNode(
+          block,
+          "motion.setMotorPairForEncoderDegrees",
+          {
+            motorA: fieldText(block, "motorA", "A"),
+            motorB: fieldText(block, "motorB", "B"),
+            left: percentPower(fieldNumber(block, "powerA", 40)),
+            right: percentPower(fieldNumber(block, "powerB", 40)),
+            degrees: literal(fieldNumber(block, "degrees", 360)),
+          },
+          undefined,
+          "stub",
+          "runtime.diagnostic.encoderNotImplemented",
+        ),
+      ];
+
+    case "motion_single_motor_degrees":
+      return [
+        commandNode(
+          block,
+          "motion.setMotorForEncoderDegrees",
+          {
+            motor: fieldText(block, "motor", "A"),
+            power: percentPower(fieldNumber(block, "power", 40)),
+            degrees: literal(fieldNumber(block, "degrees", 360)),
+          },
+          undefined,
+          "stub",
+          "runtime.diagnostic.encoderNotImplemented",
+        ),
+      ];
+
+    case "motion_reverse_motor":
+      return [commandNode(block, "motion.reverseMotor", { motor: fieldText(block, "motor", "A") })];
+
+    case "motion_stop_motor":
+      return [commandNode(block, "motion.stopMotor", { motor: fieldText(block, "motor", "all") })];
+
+    case "motion_omni_move":
+      return [
+        commandNode(
+          block,
+          "motion.omniMove",
+          {
+            power: percentPower(fieldNumber(block, "power", 40)),
+            headingDegrees: literal(fieldNumber(block, "headingDegrees", 0)),
+          },
+          undefined,
+          "stub",
+          "runtime.diagnostic.omniDriveNotImplemented",
+        ),
+      ];
+
+    case "motion_omni_turn":
+      return [
+        commandNode(
+          block,
+          "motion.omniTurn",
+          {
+            direction: fieldText(block, "direction", "Turn left"),
+            power: percentPower(fieldNumber(block, "power", 40)),
+          },
+          undefined,
+          "stub",
+          "runtime.diagnostic.omniDriveNotImplemented",
+        ),
+      ];
+
+    case "motion_omni_stop":
+      return [
+        commandNode(block, "motion.omniStop", {}, undefined, "stub", "runtime.diagnostic.omniDriveNotImplemented"),
+      ];
+
+    case "motion_steering_angle_mode":
+      return [
+        commandNode(
+          block,
+          "motion.steeringGearAngle",
+          {
+            id: literal(fieldNumber(block, "id", 1)),
+            speed: percentPower(fieldNumber(block, "speed", 40)),
+            angle: literal(fieldNumber(block, "angle", 0)),
+          },
+          undefined,
+          "telemetry-only",
+          "runtime.telemetry.steeringGear",
+        ),
+      ];
+
+    case "motion_steering_rotation_mode":
+      return [
+        commandNode(
+          block,
+          "motion.steeringGearRotation",
+          {
+            id: literal(fieldNumber(block, "id", 1)),
+            speed: percentPower(fieldNumber(block, "speed", 40)),
+          },
+          undefined,
+          "telemetry-only",
+          "runtime.telemetry.steeringGear",
+        ),
+      ];
+
+    case "motion_restore_steering_torque":
+      return [
+        commandNode(block, "motion.restoreSteeringTorque", {}, undefined, "telemetry-only", "runtime.telemetry.steeringGear"),
+      ];
+
     case "motion_set_motors_v2":
       return [
         commandNode(block, "motion.setMotorPair", {
@@ -579,6 +811,123 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
           right: valueFromInput(block, "RIGHT", 0),
           seconds: valueFromInput(block, "SECONDS", 1),
         }),
+      ];
+
+    case "patrol_initialize_tank":
+      return [
+        commandNode(block, "hardware.initializeTankLineFollower", {
+          leftMotor: fieldText(block, "leftMotor", "A"),
+          leftDirection: literal(fieldNumber(block, "leftDirection", 100)),
+          rightMotor: fieldText(block, "rightMotor", "B"),
+          rightDirection: literal(fieldNumber(block, "rightDirection", -100)),
+          grayscalePort: fieldText(block, "grayscalePort", "5"),
+        }),
+      ];
+
+    case "patrol_initialize_omni":
+      return [
+        commandNode(
+          block,
+          "hardware.initializeOmniLineFollower",
+          {
+            grayscalePort: fieldText(block, "grayscalePort", "5"),
+            leftFrontMotor: fieldText(block, "leftFrontMotor", "A"),
+            rightFrontMotor: fieldText(block, "rightFrontMotor", "B"),
+            rightRearMotor: fieldText(block, "rightRearMotor", "C"),
+            leftRearMotor: fieldText(block, "leftRearMotor", "D"),
+          },
+          undefined,
+          "stub",
+          "runtime.diagnostic.omniDriveNotImplemented",
+        ),
+      ];
+
+    case "patrol_black_white_detection":
+      return [
+        commandNode(block, "sensor.calibrateGrayscale"),
+        commandNode(block, "sensor.calibrateGrayscale"),
+      ];
+
+    case "patrol_line_speed":
+      return [
+        commandNode(block, "lineFollower.followContinuous", {
+          speed: percentPower(fieldNumber(block, "speed", 30)),
+        }),
+      ];
+
+    case "patrol_line_for_time":
+      return [
+        commandNode(block, "lineFollower.followForTime", {
+          speed: percentPower(fieldNumber(block, "speed", 30)),
+          seconds: literal(fieldNumber(block, "seconds", 0.5)),
+        }),
+      ];
+
+    case "patrol_line_intersections":
+      return [
+        commandNode(block, "lineFollower.untilIntersection", {
+          branch: fieldText(block, "branch", "left"),
+          speed: percentPower(fieldNumber(block, "speed", 30)),
+          rushSeconds: literal(fieldNumber(block, "rushSeconds", 0)),
+        }),
+      ];
+
+    case "patrol_turn_branch":
+      return [
+        commandNode(block, "lineFollower.turnUntilBranch", {
+          branch: fieldText(block, "branch", "middle"),
+          left: percentPower(fieldNumber(block, "leftSpeed", 0)),
+          right: percentPower(fieldNumber(block, "rightSpeed", 0)),
+        }),
+      ];
+
+    case "patrol_start_motor_time":
+      return [
+        commandNode(block, "motion.setMotorPairForTime", {
+          left: percentPower(fieldNumber(block, "leftSpeed", 20)),
+          right: percentPower(fieldNumber(block, "rightSpeed", 20)),
+          seconds: literal(fieldNumber(block, "seconds", 0.5)),
+        }),
+      ];
+
+    case "patrol_start_motor_angle":
+      return [
+        commandNode(
+          block,
+          "motion.setMotorPairForEncoderDegrees",
+          {
+            left: percentPower(fieldNumber(block, "leftSpeed", 20)),
+            right: percentPower(fieldNumber(block, "rightSpeed", 20)),
+            degrees: literal(fieldNumber(block, "degrees", 360)),
+          },
+          undefined,
+          "stub",
+          "runtime.diagnostic.encoderNotImplemented",
+        ),
+      ];
+
+    case "patrol_start_motor_until_sensor":
+      return [
+        commandNode(block, "motion.setMotorPairUntil", {
+          left: percentPower(fieldNumber(block, "leftSpeed", 20)),
+          right: percentPower(fieldNumber(block, "rightSpeed", 20)),
+          condition: {
+            kind: "compare",
+            op: compareOpFromSymbol(fieldText(block, "compare", "<")),
+            left: {
+              kind: "sensor",
+              sensor: "integrated-grayscale",
+              port: "5",
+              channel: fieldNumber(block, "sensor", 1),
+            },
+            right: literal(fieldNumber(block, "threshold", 50)),
+          },
+        }),
+      ];
+
+    case "patrol_start_button":
+      return [
+        commandNode(block, "compat.startButton", {}, undefined, "stub", "runtime.diagnostic.intentionalNoop"),
       ];
 
     case "patrol_line":
