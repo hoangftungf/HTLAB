@@ -299,18 +299,7 @@ export const toolbox: any = {
       kind: "category",
       name: "My Blocks",
       colour: "#2f6dff",
-      contents: [
-        { kind: "button", text: "Create block", callbackKey: "CREATE_MY_BLOCK" },
-        block("my_blocks_create"),
-        block("my_block_definition"),
-        block("my_block_call_statement", {
-          inputs: { ARG0: numberShadow(1) },
-        }),
-        block("my_block_call_value", {
-          inputs: { ARG0: numberShadow(1) },
-        }),
-        block("my_block_param_value"),
-      ],
+      custom: "MY_BLOCKS_FLYOUT",
     },
     {
       kind: "category",

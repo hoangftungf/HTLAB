@@ -14,5 +14,8 @@
   "packageManager": "pnpm@10.0.0",
   "engines": {
     "node": ">=22.14.0"
+  },
+  "dependencies": {
+    "@manhquy/flow-skill": "0.1.0-rc.1"
   }
 }

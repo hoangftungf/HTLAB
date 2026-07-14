@@ -355,19 +355,37 @@ function functionParameterId(block: Blockly.Block, parameterName: string): strin
 function functionDefinitionFromBlock(block: Blockly.Block): IRFunctionDefinitionLocal[] {
   if (block.type !== "my_block_definition") return [];
   const name = fieldText(block, "NAME", "my block").trim() || "my block";
-  const paramName = fieldText(block, "PARAM", "value").trim() || "value";
-  const paramType = nonVoidValueType(valueTypeFromField(block, "PARAM_TYPE", "Number"));
+
+  // C-018: read params from dynamic mutator array
+  const mutatorParams: Array<{ name: string; type: string; defaultValue?: string }> =
+    (block as any).params_ ?? [];
+
+  let params: IRFunctionDefinitionLocal["params"];
+  if (mutatorParams.length > 0) {
+    params = mutatorParams.map((p) => ({
+      id: functionParameterId(block, p.name),
+      name: p.name,
+      valueType: nonVoidValueType(p.type as "Number" | "Boolean" | "String" | "Any" | "Void"),
+    }));
+  } else {
+    // Backward compat: fall back to static PARAM/PARAM_TYPE fields (C-017 / older saves)
+    const paramName = fieldText(block, "PARAM", "value").trim() || "value";
+    const paramType = nonVoidValueType(valueTypeFromField(block, "PARAM_TYPE", "Number"));
+    params = [{ id: functionParameterId(block, paramName), name: paramName, valueType: paramType }];
+  }
+
   return [
     {
       id: block.id,
       name,
-      params: [{ id: functionParameterId(block, paramName), name: paramName, valueType: paramType }],
+      params,
       returnType: valueTypeFromField(block, "RETURN_TYPE", "Number"),
       body: blockSequenceToV2Nodes(block.getInputTargetBlock("BODY")),
       source: sourceFor(block, "My Blocks"),
     },
   ];
 }
+
 
 function blockRequiresV2(block: Blockly.Block | null): boolean {
   if (!block) return false;
@@ -998,12 +1016,22 @@ function valueFromBlock(block: Blockly.Block): IRValueExpressionLocal {
         ],
       };
 
-    case "my_block_call_value":
+    case "my_block_call_value": {
+      const callArgs: Array<{ name: string; type: string }> = (block as any).args_ ?? [];
+      const argCount = callArgs.length;
+      const compiledArgs: any[] = [];
+      for (let ai = 0; ai < argCount; ai++) {
+        compiledArgs.push(valueFromInput(block, `ARG${ai}`, 0));
+      }
+      if (argCount === 0) {
+        compiledArgs.push(valueFromInput(block, "ARG0", 0));
+      }
       return {
         kind: "call",
         callee: fieldText(block, "NAME", "my block"),
-        args: [valueFromInput(block, "ARG0", 0)],
+        args: compiledArgs,
       };
+    }
 
     case "my_block_param_value": {
       const name = fieldText(block, "PARAM", "value");
@@ -1839,14 +1867,18 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
       ];
     }
 
-    case "my_block_call_statement":
-      return [
-        commandNode(block, "function.call", {
-          callee: fieldText(block, "NAME", "my block"),
-          argumentCount: literal(1),
-          arg0: valueFromInput(block, "ARG0", 0),
-        }),
-      ];
+    case "my_block_call_statement": {
+      const callArgs: Array<{ name: string; type: string }> = (block as any).args_ ?? [];
+      const argCount = callArgs.length || 1;
+      const argFields: Record<string, IRFieldValueLocal> = {
+        callee: fieldText(block, "NAME", "my block"),
+        argumentCount: literal(argCount),
+      };
+      for (let ai = 0; ai < argCount; ai++) {
+        argFields[`arg${ai}`] = valueFromInput(block, `ARG${ai}`, 0);
+      }
+      return [commandNode(block, "function.call", argFields)];
+    }
 
     case "my_blocks_create":
       return [
