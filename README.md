@@ -48,51 +48,51 @@ HTLAB/
 │       ├── src/
 │       │   ├── blockly/
 │       │   │   ├── blockRegistry.ts     # Barrel re-export → blockRegistry/index.ts
-│       │   │   ├── blockRegistry/       # Block metadata registry (types, constants, entries)
-│       │   │   │   ├── types.ts         # BlockCategory, BlockRegistryEntry, field types
-│       │   │   │   ├── constants.ts     # Port/dropdown option constants
-│       │   │   │   ├── helpers.ts       # field(), entry() factories
-│       │   │   │   ├── entries/         # 12 category entry files (motion, sensor, logic, …)
+│       │   │   ├── blockRegistry/       # Đăng ký metadata block (types, constants, entries)
+│       │   │   │   ├── types.ts         # BlockCategory, BlockRegistryEntry, kiểu field
+│       │   │   │   ├── constants.ts     # Hằng số port/dropdown
+│       │   │   │   ├── helpers.ts       # Hàm factory field(), entry()
+│       │   │   │   ├── entries/         # 12 file entry theo category (motion, sensor, logic, …)
 │       │   │   │   └── index.ts         # WHALESBOT_BLOCK_REGISTRY + derived exports
 │       │   │   ├── blocks.ts            # Barrel re-export → blocks/index.ts
-│       │   │   ├── blocks/              # Blockly block definitions (side-effect registrations)
+│       │   │   ├── blocks/              # Định nghĩa block Blockly (đăng ký side-effect)
 │       │   │   │   ├── shared.ts        # BLOCK_COLOURS, numberInput, variable menus
-│       │   │   │   ├── legacy.ts        # Legacy hardware / movement / sensor blocks
-│       │   │   │   ├── values.ts        # Value / math / variable blocks (C-010)
-│       │   │   │   ├── logic.ts         # Logic + control-flow blocks
-│       │   │   │   ├── myBlocks.ts      # My Blocks system (def, call, mixin, param)
-│       │   │   │   ├── sensors.ts       # Sensor factory functions + blocks
-│       │   │   │   ├── motion.ts        # Motion runtime blocks
-│       │   │   │   ├── patrol.ts        # Patrol line runtime blocks
-│       │   │   │   ├── cCode.ts         # C Code sandbox block
-│       │   │   │   ├── fallback.ts      # Registry fallback auto-registration
-│       │   │   │   └── index.ts         # Side-effect imports + public API re-exports
-│       │   │   ├── generator.ts         # IR code generator (workspaceToIR)
-│       │   │   ├── toolbox.ts           # Full WhalesBot toolbox config
-│       │   │   ├── fieldShapeClasses.ts # Rounded corner field shape overrides
+│       │   │   │   ├── legacy.ts        # Block phần cứng / di chuyển / cảm biến cũ
+│       │   │   │   ├── values.ts        # Block giá trị / toán / biến (C-010)
+│       │   │   │   ├── logic.ts         # Block logic + control-flow
+│       │   │   │   ├── myBlocks.ts      # Hệ thống My Blocks (def, call, mixin, param)
+│       │   │   │   ├── sensors.ts       # Hàm factory + block cảm biến
+│       │   │   │   ├── motion.ts        # Block di chuyển runtime
+│       │   │   │   ├── patrol.ts        # Block patrol line runtime
+│       │   │   │   ├── cCode.ts         # Block C Code sandbox
+│       │   │   │   ├── fallback.ts      # Tự động đăng ký block từ registry
+│       │   │   │   └── index.ts         # Import side-effect + re-export public API
+│       │   │   ├── generator.ts         # Sinh IR code (workspaceToIR)
+│       │   │   ├── toolbox.ts           # Cấu hình WhalesBot toolbox đầy đủ
+│       │   │   ├── fieldShapeClasses.ts # Bo góc cho field shape
 │       │   │   ├── theme.ts             # whalesBotBlocklyTheme + localStorage helpers
-│       │   │   ├── dialogs/             # Modal dialog components
+│       │   │   ├── dialogs/             # Component hộp thoại modal
 │       │   │   │   ├── VariableDialog.tsx
 │       │   │   │   ├── DeleteVariableDialog.tsx
 │       │   │   │   └── MyBlockDialog.tsx
 │       │   │   ├── hooks/               # React hooks
 │       │   │   │   ├── useToolboxVisibility.ts
 │       │   │   │   └── useVariableHoverMenus.ts
-│       │   │   ├── generator.test.ts    # C-010 generator snapshot test
+│       │   │   ├── generator.test.ts    # Test snapshot generator C-010
 │       │   │   └── BlocklyEditor.tsx    # React wrapper (Zelos renderer)
 │       │   ├── components/
-│       │   │   ├── Controls.tsx         # Toolbar (Run/Pause/Step/Reset + speed)
-│       │   │   ├── SimulationView.tsx   # PixiJS 8 canvas (map, robot, trajectory)
-│       │   │   ├── TelemetryPanel.tsx   # Sensor bars, pattern, line gauge
-│       │   │   ├── ReplayControls.tsx   # Replay frame scrubber
-│       │   │   └── ProjectManager.tsx   # Save/Load dialogs
+│       │   │   ├── Controls.tsx         # Thanh công cụ (Run/Pause/Step/Reset + tốc độ)
+│       │   │   ├── SimulationView.tsx   # Canvas PixiJS 8 (map, robot, trajectory)
+│       │   │   ├── TelemetryPanel.tsx   # Thanh cảm biến, pattern, line gauge
+│       │   │   ├── ReplayControls.tsx   # Thanh tua replay
+│       │   │   └── ProjectManager.tsx   # Hộp thoại Lưu/Mở
 │       │   ├── hooks/
-│       │   │   └── useSimulation.ts     # (legacy hook, superseded by Zustand)
+│       │   │   └── useSimulation.ts     # (hook cũ, đã thay bằng Zustand)
 │       │   ├── store/
 │       │   │   ├── simStore.ts          # Zustand store (sim, interpreter, replay)
-│       │   │   └── projectStore.ts      # localStorage persistence
-│       │   ├── App.tsx                  # 3-column layout (Blockly|Canvas|Telemetry)
-│       │   ├── main.tsx                 # React entry point
+│       │   │   └── projectStore.ts      # Lưu trữ localStorage
+│       │   ├── App.tsx                  # Layout 3 cột (Blockly|Canvas|Telemetry)
+│       │   ├── main.tsx                 # Entry point React
 │       │   └── index.css                # Tailwind base
 │       ├── public/favicon.svg
 │       ├── index.html
@@ -101,27 +101,27 @@ HTLAB/
 │       └── tailwind.config.ts
 │
 ├── packages/
-│   └── simulation-core/                 # Zero-dependency TypeScript library
+│   └── simulation-core/                 # Thư viện TypeScript zero-dependency
 │       ├── src/
-│       │   ├── types.ts                 # All core types + interfaces
+│       │   ├── types.ts                 # Toàn bộ kiểu + interface lõi
 │       │   ├── sim.ts                   # Simulation factory (createSimulation)
-│       │   ├── kinematics.ts            # Differential drive kinematics
+│       │   ├── kinematics.ts            # Động học differential drive
 │       │   ├── map.ts                   # Map loader + pixel sampling
-│       │   ├── rng.ts                   # Seeded PRNG (mulberry32)
+│       │   ├── rng.ts                   # PRNG có seed (mulberry32)
 │       │   ├── replay.ts                # Replay simulation factory
 │       │   ├── index.ts                 # Package entry point
 │       │   ├── sensor/
-│       │   │   ├── grayscale.ts         # 5-in-1 line sensor model
+│       │   │   ├── grayscale.ts         # Mô hình cảm biến line 5-in-1
 │       │   │   └── index.ts
 │       │   ├── interpreter/
 │       │   │   ├── types.ts             # OpCode, IRCommand, IRProgram, Interpreter
-│       │   │   ├── interpreter.ts       # V1 + V2 IR interpreter (dispatches by IR version)
-│       │   │   ├── interpreterHelpers.ts # Shared helpers (compare, detectGroup, toNumber, …)
-│       │   │   ├── cSandbox.ts           # C-subset sandbox for C Code blocks
+│       │   │   ├── interpreter.ts       # Trình thông dịch IR V1 + V2 (dispatch theo IR version)
+│       │   │   ├── interpreterHelpers.ts # Helper dùng chung (compare, detectGroup, toNumber, …)
+│       │   │   ├── cSandbox.ts           # Sandbox C-subset cho block C Code
 │       │   │   └── index.ts
 │       │   └── telemetry/
 │       │       ├── types.ts             # ReplaySimulation, TelemetryDiff
-│       │       ├── diff.ts              # diffTelemetry — compare two logs
+│       │       ├── diff.ts              # diffTelemetry — so sánh hai bản ghi
 │       │       └── index.ts
 │       └── test/
 │           ├── kinematics.test.ts
@@ -136,13 +136,13 @@ HTLAB/
 │           │   └── c014-c-sandbox.test.ts
 │           └── telemetry/telemetry.test.ts
 │
-├── flow/                                # Build flow planning artifacts
+├── flow/                                # Tài liệu quy trình build
 ├── cards/                               # Build cards (C-001 → C-015)
-├── maps/sample/                         # Sample map config
-├── vercel.json                          # Vercel deploy config
+├── maps/sample/                         # Cấu hình map mẫu
+├── vercel.json                          # Cấu hình deploy Vercel
 ├── pnpm-workspace.yaml                  # pnpm monorepo workspaces
-├── turbo.json                           # Turborepo config
-├── tsconfig.base.json                   # Shared TypeScript config
+├── turbo.json                           # Cấu hình Turborepo
+├── tsconfig.base.json                   # Cấu hình TypeScript dùng chung
 ├── package.json                         # Root package.json
 └── README.md
 ```
@@ -226,19 +226,19 @@ Blockly Editor          IR Generator            Interpreter
 ### Robot
 
 - **Loại:** Differential drive (2 bánh chủ động)
-- **Configurable:** wheelbase, wheelRadius, maxSpeed, maxAccel, friction, deadzone
-- **Sensor config:** sensorSpacing, sensorOffset, sensorNoise, sensorBias, latency
+- **Có thể cấu hình:** wheelbase, wheelRadius, maxSpeed, maxAccel, friction, deadzone
+- **Cấu hình cảm biến:** sensorSpacing, sensorOffset, sensorNoise, sensorBias, latency
 - **Cấu hình:** `RobotConfig` trong `packages/simulation-core/src/types.ts`
 
 ### Cảm biến Grayscale 5-in-1
 
-- **5 mắt** (Road 1 → Road 5), hàng ngang phía trước robot, khoảng cách configurable
+- **5 mắt** (Road 1 → Road 5), hàng ngang phía trước robot, khoảng cách có thể cấu hình
 - **Giá trị:** 0 (nền trắng) → 100 (line đen), tính từ grayscale pixel + threshold
 - **Pattern nhị phân:** `"00100"`, `"01110"`, `"11100"` — mỗi ký tự on/off theo ngưỡng 50
 - **Nhóm cảm biến:** left (R1-R3), middle (R2-R4), right (R3-R5)
-- **Line position:** weighted centroid, -100 (far left) → +100 (far right)
-- **Hiệu chuẩn:** hai pha (white floor → black line), per-road thresholds nội bộ
-- **Noise/bias/latency:** configurable, Gaussian noise qua seeded RNG
+- **Line position:** weighted centroid, -100 (trái xa) → +100 (phải xa)
+- **Hiệu chuẩn:** hai pha (nền trắng → line đen), ngưỡng nội bộ cho từng mắt
+- **Noise/bias/latency:** có thể cấu hình, Gaussian noise qua seeded RNG
 
 ### IR Interpreter — 14 opcodes
 
@@ -250,31 +250,31 @@ LABEL(9)          JUMP(10)               LOOP_START(11)
 LOOP_END(12)      END_PROGRAM(13)
 ```
 
-- Max 1000 instructions/tick, configurable runtime cap (default 18000 ticks = 5 phút)
+- Tối đa 1000 instructions/tick, giới hạn runtime có thể cấu hình (mặc định 18000 ticks = 5 phút)
 - ACC register + 8 variable slots (SET_VAR/GET_VAR)
 - Loop stack cho LOOP_START/LOOP_END lồng nhau
 - Label map cho JUMP và IF_SENSOR_VALUE
 
 ### Blockly Toolbox — WhalesBot registry coverage
 
-| Category | Status |
-|----------|--------|
-| Motion | Tank/single motor implemented where differential-drive physics exists; omni/encoder diagnostics |
-| Sensor | Grayscale/timer/encoder implemented; external hardware sensors preserved as expressions/stubs |
-| Event | Main entry marker plus touch-event diagnostic compatibility |
-| Loop | Repeat/wait/break/return flows lower to IR v2; while compatibility remains diagnostic |
-| Logic | If/else, compare, and boolean expressions lower to IR v2 |
-| Math | Arithmetic, modulo, random, round, unary/trig expressions lower to IR v2 |
-| Variable | Blockly variable dialog plus set/change/get and compatibility diagnostics |
+| Category | Trạng thái |
+|----------|-----------|
+| Motion | Tank/single motor đã triển khai với vật lý differential-drive; omni/encoder ở dạng diagnostic |
+| Sensor | Grayscale/timer/encoder đã triển khai; cảm biến ngoại vi giữ ở dạng expression/stub |
+| Event | Entry point chính + touch-event diagnostic tương thích |
+| Loop | Repeat/wait/break/return biên dịch xuống IR v2; while hiện ở dạng diagnostic |
+| Logic | If/else, compare, boolean expression biên dịch xuống IR v2 |
+| Math | Arithmetic, modulo, random, round, unary/trig biên dịch xuống IR v2 |
+| Variable | Hộp thoại biến Blockly + set/change/get + diagnostic tương thích |
 | AI | Recognition compatibility expressions/stubs |
-| Patrol line | Tank line-following route blocks implemented; omni/encoder variants diagnostic |
-| My Blocks | One-parameter custom block definitions/calls execute through IR v2 |
-| C Code | Tiny C-subset payloads generated; client sandbox remains disabled by default |
+| Patrol line | Block dò line tank đã triển khai; omni/encoder ở dạng diagnostic |
+| My Blocks | Định nghĩa/gọi custom block một tham số thực thi qua IR v2 |
+| C Code | Tiny C-subset payloads; sandbox client mặc định tắt |
 
-Legacy `initialize` and `calibrate_grayscale` blocks remain loadable for existing
-projects and samples, but are not exposed as a WhalesBot toolbox category.
-Legacy `Light Speaker` blocks also remain loadable for existing projects and
-telemetry compatibility, but are hidden from the line-following toolbox.
+Block `initialize` và `calibrate_grayscale` cũ vẫn có thể nạp cho dự án
+và mẫu có sẵn, nhưng không hiển thị trong toolbox WhalesBot.
+Block `Light Speaker` cũ cũng có thể nạp cho dự án có sẵn và
+tương thích telemetry, nhưng bị ẩn khỏi toolbox dò line.
 
 ## Stack công nghệ
 
@@ -308,7 +308,7 @@ telemetry compatibility, but are hidden from the line-following toolbox.
 | C-014 | C Code sandbox spike, disabled by default | covered in core checks |
 | C-015 | Full toolbox parity, samples, QA smoke | client smoke: 3 pass |
 
-**Tong hien tai: 155 simulation-core tests, 3 client smoke tests, 0 failures in the latest C-015 verification run.**
+**Tổng hiện tại: 155 simulation-core tests, 3 client smoke tests, 0 failures trong lần chạy xác minh C-015 mới nhất.**
 
 ## Lộ trình triển khai
 
