@@ -10,9 +10,7 @@ const lineFollowingRouteXml = `\
 <xml xmlns="https://developers.google.com/blockly/xml">
   <block type="event_program_execute" x="24" y="24">
     <next>
-      <block type="initialize">
-        <next>
-          <block type="patrol_initialize_tank">
+      <block type="patrol_initialize_tank">
             <field name="leftMotor">A</field>
             <value name="leftDirection">
               <shadow type="value_number">
@@ -123,8 +121,6 @@ const mathLogicControlXml = `\
           </block>
         </next>
       </block>
-    </next>
-  </block>
 </xml>`;
 
 const sideEffectDiagnosticsXml = `\
@@ -245,9 +241,7 @@ const mixedCategoryQaXml = `\
   </block>
   <block type="event_program_execute" x="24" y="24">
     <next>
-      <block type="initialize">
-        <next>
-          <block type="patrol_initialize_tank">
+      <block type="patrol_initialize_tank">
             <field name="leftMotor">A</field>
             <value name="leftDirection">
               <shadow type="value_number">
@@ -360,8 +354,6 @@ const mixedCategoryQaXml = `\
           </block>
         </next>
       </block>
-    </next>
-  </block>
 </xml>`;
 
 export const SAMPLE_PROGRAMS: readonly SampleProgram[] = [

@@ -111,18 +111,8 @@ export function getVariableMenuOptions(block: Blockly.Block): Array<{ enabled: b
 
 // ---- Phần cứng ----
 
-Blockly.Blocks["initialize"] = {
-  init(this: Blockly.Block) {
-    this.jsonInit({
-      type: "initialize",
-      message0: "Initialize robot",
-      colour: BLOCK_COLOURS.hardware,
-      previousStatement: null,
-      nextStatement: null,
-      tooltip: "Reset robot to starting position on the map",
-    });
-  },
-};
+
+
 
 Blockly.Blocks["calibrate_grayscale"] = {
   init(this: Blockly.Block) {

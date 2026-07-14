@@ -1236,8 +1236,7 @@ function blockToV2Nodes(block: Blockly.Block): IRNodeLocal[] {
   if (effectNode) return [effectNode];
 
   switch (block.type) {
-    case "initialize":
-      return [commandNode(block, "hardware.initialize")];
+
 
     case "calibrate_grayscale":
       return [commandNode(block, "sensor.calibrateGrayscale")];
@@ -1988,9 +1987,7 @@ function blockToIR(block: Blockly.Block): IRCommand[] {
   const result: IRCommand[] = [];
 
   switch (type) {
-    case "initialize":
-      result.push({ op: OpCode.INIT_HARDWARE, args: [] });
-      break;
+
 
     case "calibrate_grayscale":
       result.push({ op: OpCode.CALIBRATE_GRAYSCALE, args: [] });

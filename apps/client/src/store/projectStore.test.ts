@@ -341,11 +341,8 @@ function makeMixedCategoryWorkspace(): Blockly.Workspace {
   workspace.createVariable("speed", "Number", "var-speed");
 
   const entry = workspace.newBlock("event_program_execute");
-  const initialize = workspace.newBlock("initialize");
-  connectNext(entry, initialize);
-
   const patrolInit = workspace.newBlock("patrol_initialize_tank");
-  connectNext(initialize, patrolInit);
+  connectNext(entry, patrolInit);
 
   const calibrate = workspace.newBlock("patrol_black_white_detection");
   connectNext(patrolInit, calibrate);
@@ -1021,7 +1018,6 @@ describe("projectStore C-013 save/load compatibility", () => {
     const xmlAfterReload = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(reloadedWorkspace));
     for (const type of [
       "event_program_execute",
-      "initialize",
       "motion_set_motors_v2",
       "light_led_swatch",
       "sensor_integrated_grayscale_detect_black",
