@@ -1,0 +1,72 @@
+import { entry, field } from "../helpers.js";
+
+export const myBlocksEntries = [
+  entry({
+    type: "my_blocks_create",
+    category: "My Blocks",
+    displayText: "Create new blocks",
+    kind: "button-dialog",
+    fields: [
+      field("blockName", "text", "my block", { required: true }),
+      field("parameters", "text", "number:boolean:text"),
+    ],
+    runtimeStatus: "stub",
+    generatorHandlerId: "myBlocks.create",
+    runtimeHandlerId: "runtime.diagnostic.functionsNotImplemented",
+    irV2Op: "function.declare",
+  }),
+  entry({
+    type: "my_block_definition",
+    category: "My Blocks",
+    displayText: "Define block [name] param [value]",
+    kind: "c-block",
+    fields: [
+      field("name", "text", "my block", { required: true }),
+      field("param", "text", "value", { required: true }),
+      field("body", "statement-input", null),
+    ],
+    runtimeStatus: "implemented",
+    generatorHandlerId: "myBlocks.definition",
+    runtimeHandlerId: "runtime.function.definition",
+    irV2Op: "function.declare",
+  }),
+  entry({
+    type: "my_block_call_statement",
+    category: "My Blocks",
+    displayText: "Call block [name]",
+    kind: "statement",
+    fields: [
+      field("name", "text", "my block", { required: true }),
+      field("arg0", "value-input", 1),
+    ],
+    runtimeStatus: "implemented",
+    generatorHandlerId: "myBlocks.callStatement",
+    runtimeHandlerId: "runtime.function.call",
+    irV2Op: "function.call",
+  }),
+  entry({
+    type: "my_block_call_value",
+    category: "My Blocks",
+    displayText: "Call block [name] return value",
+    kind: "reporter-number",
+    fields: [
+      field("name", "text", "my block", { required: true }),
+      field("arg0", "value-input", 1),
+    ],
+    runtimeStatus: "implemented",
+    generatorHandlerId: "myBlocks.callValue",
+    runtimeHandlerId: "runtime.function.callValue",
+    irV2Op: "value.call",
+  }),
+  entry({
+    type: "my_block_param_value",
+    category: "My Blocks",
+    displayText: "parameter [value]",
+    kind: "reporter-number",
+    fields: [field("param", "text", "value", { required: true })],
+    runtimeStatus: "implemented",
+    generatorHandlerId: "myBlocks.paramValue",
+    runtimeHandlerId: "runtime.function.paramValue",
+    irV2Op: "value.parameter",
+  }),
+];

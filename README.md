@@ -47,9 +47,38 @@ HTLAB/
 │   └── client/                          # React 18 + Vite + PixiJS 8 + Blockly
 │       ├── src/
 │       │   ├── blockly/
-│       │   │   ├── blocks.ts            # WhalesBot block definitions + registry fallbacks
+│       │   │   ├── blockRegistry.ts     # Barrel re-export → blockRegistry/index.ts
+│       │   │   ├── blockRegistry/       # Block metadata registry (types, constants, entries)
+│       │   │   │   ├── types.ts         # BlockCategory, BlockRegistryEntry, field types
+│       │   │   │   ├── constants.ts     # Port/dropdown option constants
+│       │   │   │   ├── helpers.ts       # field(), entry() factories
+│       │   │   │   ├── entries/         # 12 category entry files (motion, sensor, logic, …)
+│       │   │   │   └── index.ts         # WHALESBOT_BLOCK_REGISTRY + derived exports
+│       │   │   ├── blocks.ts            # Barrel re-export → blocks/index.ts
+│       │   │   ├── blocks/              # Blockly block definitions (side-effect registrations)
+│       │   │   │   ├── shared.ts        # BLOCK_COLOURS, numberInput, variable menus
+│       │   │   │   ├── legacy.ts        # Legacy hardware / movement / sensor blocks
+│       │   │   │   ├── values.ts        # Value / math / variable blocks (C-010)
+│       │   │   │   ├── logic.ts         # Logic + control-flow blocks
+│       │   │   │   ├── myBlocks.ts      # My Blocks system (def, call, mixin, param)
+│       │   │   │   ├── sensors.ts       # Sensor factory functions + blocks
+│       │   │   │   ├── motion.ts        # Motion runtime blocks
+│       │   │   │   ├── patrol.ts        # Patrol line runtime blocks
+│       │   │   │   ├── cCode.ts         # C Code sandbox block
+│       │   │   │   ├── fallback.ts      # Registry fallback auto-registration
+│       │   │   │   └── index.ts         # Side-effect imports + public API re-exports
 │       │   │   ├── generator.ts         # IR code generator (workspaceToIR)
 │       │   │   ├── toolbox.ts           # Full WhalesBot toolbox config
+│       │   │   ├── fieldShapeClasses.ts # Rounded corner field shape overrides
+│       │   │   ├── theme.ts             # whalesBotBlocklyTheme + localStorage helpers
+│       │   │   ├── dialogs/             # Modal dialog components
+│       │   │   │   ├── VariableDialog.tsx
+│       │   │   │   ├── DeleteVariableDialog.tsx
+│       │   │   │   └── MyBlockDialog.tsx
+│       │   │   ├── hooks/               # React hooks
+│       │   │   │   ├── useToolboxVisibility.ts
+│       │   │   │   └── useVariableHoverMenus.ts
+│       │   │   ├── generator.test.ts    # C-010 generator snapshot test
 │       │   │   └── BlocklyEditor.tsx    # React wrapper (Zelos renderer)
 │       │   ├── components/
 │       │   │   ├── Controls.tsx         # Toolbar (Run/Pause/Step/Reset + speed)
@@ -86,7 +115,9 @@ HTLAB/
 │       │   │   └── index.ts
 │       │   ├── interpreter/
 │       │   │   ├── types.ts             # OpCode, IRCommand, IRProgram, Interpreter
-│       │   │   ├── interpreter.ts       # 14-opcode IR interpreter
+│       │   │   ├── interpreter.ts       # V1 + V2 IR interpreter (dispatches by IR version)
+│       │   │   ├── interpreterHelpers.ts # Shared helpers (compare, detectGroup, toNumber, …)
+│       │   │   ├── cSandbox.ts           # C-subset sandbox for C Code blocks
 │       │   │   └── index.ts
 │       │   └── telemetry/
 │       │       ├── types.ts             # ReplaySimulation, TelemetryDiff
@@ -98,7 +129,11 @@ HTLAB/
 │           ├── rng.test.ts
 │           ├── sim.test.ts
 │           ├── sensor/grayscale.test.ts
-│           ├── interpreter/interpreter.test.ts
+│           ├── interpreter/
+│           │   ├── interpreter.test.ts
+│           │   ├── c012-compat.test.ts
+│           │   ├── c013-functions.test.ts
+│           │   └── c014-c-sandbox.test.ts
 │           └── telemetry/telemetry.test.ts
 │
 ├── flow/                                # Build flow planning artifacts
