@@ -1533,6 +1533,10 @@ function createV2Interpreter(
     while (!done && executed < maxInstructionsPerTick) {
       const frame = frames[frames.length - 1];
       if (!frame) {
+        // Motors vẫn đang chạy → giữ simulation chạy, không kết thúc program
+        if (motorTargets.left !== 0 || motorTargets.right !== 0) {
+          return true;
+        }
         done = true;
         return false;
       }
