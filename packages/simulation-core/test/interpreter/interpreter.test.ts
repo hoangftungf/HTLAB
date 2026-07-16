@@ -411,7 +411,8 @@ describe("IR v2 interpreter", () => {
 
     runTicks(interp, sim, 8);
 
-    expect(interp.done).toBe(true);
+    // Motors still running after setMotorPair → program keeps the simulation alive
+    expect(interp.done).toBe(false);
     expect(sim.getTelemetry()[0].motorTargets.left).toBeCloseTo(1, 5);
     expect(sim.getTelemetry()[0].motorTargets.right).toBeCloseTo(0.5, 5);
     expect(interp.diagnostics.some((diagnostic) => diagnostic.code === "HTLAB_REMOTE_STUB")).toBe(true);
@@ -597,7 +598,7 @@ describe("IR v2 interpreter", () => {
     interp.step();
     sim.tick();
 
-    expect(interp.done).toBe(true);
+    expect(interp.done).toBe(false);
     expect(sim.getTelemetry()[0].motorTargets.left).toBe(-0.4);
     expect(sim.getTelemetry()[0].motorTargets.right).toBe(0);
   });

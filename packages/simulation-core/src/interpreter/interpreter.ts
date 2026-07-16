@@ -1034,7 +1034,7 @@ function createV2Interpreter(
   function completeFrame(frame: V2Frame): void {
     if (!frame.loop) {
       frames.pop();
-      if (frames.length === 0) done = true;
+      if (frames.length === 0 && motorTargets.left === 0 && motorTargets.right === 0) done = true;
       return;
     }
 
@@ -1535,6 +1535,7 @@ function createV2Interpreter(
       if (!frame) {
         // Motors vẫn đang chạy → giữ simulation chạy, không kết thúc program
         if (motorTargets.left !== 0 || motorTargets.right !== 0) {
+          done = false;
           return true;
         }
         done = true;
